@@ -1,4 +1,5 @@
 {
+  "name": "Promptshot",
   "devDependencies": {
     "vercel": "^54.2.0"
   }
