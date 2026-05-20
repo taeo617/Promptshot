@@ -1,3 +1,5 @@
+import { db, isPlaceholder, doc, setDoc, onSnapshot } from './firebase-config.js';
+
 document.addEventListener('DOMContentLoaded', () => {
   initClock();
   initThemeToggle();
@@ -82,10 +84,13 @@ function initThemeToggle() {
 }
 
 /* ==========================================================================
-   3. Control Center Settings & Interactions
+   3. Control Center Settings & Interactions (with Firebase Cloud Sync)
    ========================================================================== */
 function initControlCenter() {
-  // Wifi Switch
+  const settingsDocRef = !isPlaceholder ? doc(db, 'settings', 'current') : null;
+  let isSyncingFromFirebase = false;
+
+  // Wi-Fi Toggle
   setupToggle('wifi-toggle', 'wifi-status-text', {
     on: '연결됨',
     off: '꺼짐'
@@ -94,24 +99,31 @@ function initControlCenter() {
     if (wifiStatusIcon) {
       wifiStatusIcon.style.opacity = isActive ? '1' : '0.25';
     }
+    saveSettingsToFirebase();
   });
 
-  // Bluetooth Switch
+  // Bluetooth Toggle
   setupToggle('bluetooth-toggle', 'bluetooth-status-text', {
     on: '켜짐',
     off: '꺼짐'
+  }, () => {
+    saveSettingsToFirebase();
   });
 
-  // AirDrop Switch
+  // AirDrop Toggle
   setupToggle('airdrop-toggle', 'airdrop-status-text', {
     on: '모두에게',
     off: '꺼짐'
+  }, () => {
+    saveSettingsToFirebase();
   });
 
-  // DND Switch
+  // DND Toggle
   setupToggle('dnd-toggle', 'dnd-status-text', {
     on: '켜짐',
     off: '꺼짐'
+  }, () => {
+    saveSettingsToFirebase();
   });
 
   // Brightness Slider
@@ -121,10 +133,109 @@ function initControlCenter() {
     blobs.forEach(b => {
       b.style.opacity = (val / 100) * (document.documentElement.style.colorScheme === 'dark' ? 0.4 : 0.5);
     });
+    saveSettingsToFirebase();
   });
 
   // Volume Slider
-  setupSlider('volume-slider', 'volume-value', 'volume-fill');
+  setupSlider('volume-slider', 'volume-value', 'volume-fill', () => {
+    saveSettingsToFirebase();
+  });
+
+  // Save Settings to Firebase Firestore
+  function saveSettingsToFirebase() {
+    if (isPlaceholder || !settingsDocRef || isSyncingFromFirebase) return;
+
+    const wifi = document.getElementById('wifi-toggle').getAttribute('aria-checked') === 'true';
+    const bluetooth = document.getElementById('bluetooth-toggle').getAttribute('aria-checked') === 'true';
+    const airdrop = document.getElementById('airdrop-toggle').getAttribute('aria-checked') === 'true';
+    const dnd = document.getElementById('dnd-toggle').getAttribute('aria-checked') === 'true';
+    
+    const brightness = parseInt(document.getElementById('brightness-slider').value, 10);
+    const volume = parseInt(document.getElementById('volume-slider').value, 10);
+
+    setDoc(settingsDocRef, {
+      wifi,
+      bluetooth,
+      airdrop,
+      dnd,
+      brightness,
+      volume,
+      updatedAt: Date.now()
+    }).catch(err => console.error("❌ Error syncing settings to Firebase:", err));
+  }
+
+  // Real-Time Firebase Listener
+  if (!isPlaceholder && settingsDocRef) {
+    onSnapshot(settingsDocRef, (snapshot) => {
+      if (!snapshot.exists()) return;
+      
+      const data = snapshot.data();
+      isSyncingFromFirebase = true;
+
+      // Update WiFi
+      const wifiBtn = document.getElementById('wifi-toggle');
+      const wifiTxt = document.getElementById('wifi-status-text');
+      if (wifiBtn && wifiTxt && data.wifi !== undefined) {
+        wifiBtn.setAttribute('aria-checked', String(data.wifi));
+        wifiTxt.textContent = data.wifi ? '연결됨' : '꺼짐';
+        const wifiIcon = document.getElementById('status-wifi');
+        if (wifiIcon) wifiIcon.style.opacity = data.wifi ? '1' : '0.25';
+      }
+
+      // Update Bluetooth
+      const btBtn = document.getElementById('bluetooth-toggle');
+      const btTxt = document.getElementById('bluetooth-status-text');
+      if (btBtn && btTxt && data.bluetooth !== undefined) {
+        btBtn.setAttribute('aria-checked', String(data.bluetooth));
+        btTxt.textContent = data.bluetooth ? '켜짐' : '꺼짐';
+      }
+
+      // Update AirDrop
+      const adBtn = document.getElementById('airdrop-toggle');
+      const adTxt = document.getElementById('airdrop-status-text');
+      if (adBtn && adTxt && data.airdrop !== undefined) {
+        adBtn.setAttribute('aria-checked', String(data.airdrop));
+        adTxt.textContent = data.airdrop ? '모두에게' : '꺼짐';
+      }
+
+      // Update DND
+      const dndBtn = document.getElementById('dnd-toggle');
+      const dndTxt = document.getElementById('dnd-status-text');
+      if (dndBtn && dndTxt && data.dnd !== undefined) {
+        dndBtn.setAttribute('aria-checked', String(data.dnd));
+        dndTxt.textContent = data.dnd ? '켜짐' : '꺼짐';
+      }
+
+      // Update Brightness Slider
+      const brSlider = document.getElementById('brightness-slider');
+      const brTxt = document.getElementById('brightness-value');
+      const brFill = document.getElementById('brightness-fill');
+      if (brSlider && brTxt && brFill && data.brightness !== undefined) {
+        brSlider.value = data.brightness;
+        brTxt.textContent = `${data.brightness}%`;
+        brFill.style.width = `${data.brightness}%`;
+        brSlider.parentElement.style.setProperty('--value-percent', `${data.brightness}%`);
+        
+        const blobs = document.querySelectorAll('.blob');
+        blobs.forEach(b => {
+          b.style.opacity = (data.brightness / 100) * (document.documentElement.style.colorScheme === 'dark' ? 0.4 : 0.5);
+        });
+      }
+
+      // Update Volume Slider
+      const volSlider = document.getElementById('volume-slider');
+      const volTxt = document.getElementById('volume-value');
+      const volFill = document.getElementById('volume-fill');
+      if (volSlider && volTxt && volFill && data.volume !== undefined) {
+        volSlider.value = data.volume;
+        volTxt.textContent = `${data.volume}%`;
+        volFill.style.width = `${data.volume}%`;
+        volSlider.parentElement.style.setProperty('--value-percent', `${data.volume}%`);
+      }
+
+      isSyncingFromFirebase = false;
+    });
+  }
 
   // Toggle helper
   function setupToggle(buttonId, textId, states, callback) {
@@ -259,14 +370,12 @@ function initPerformanceChart() {
     const frequency = 0.015 + (currentCpu * 0.0003); // Frequency increases slightly with CPU load
     
     for (let x = 0; x <= w; x++) {
-      // Combination of two sine waves for more realistic organic noise
       const y = h / 2 + 
                 Math.sin(x * frequency + time) * amplitude + 
                 Math.sin(x * 0.03 - time * 1.5) * (amplitude * 0.3);
       ctx.lineTo(x, y);
     }
     
-    // Create fill path under line
     const path2D = new Path2D(ctx);
     ctx.lineTo(w, h);
     ctx.lineTo(0, h);
@@ -298,7 +407,6 @@ function initMagneticDock() {
   document.addEventListener('mousemove', (e) => {
     const dockRect = dock.getBoundingClientRect();
     
-    // Check if mouse is relatively close vertically to avoid calculation overhead
     const verticalDist = Math.abs(e.clientY - (dockRect.top + dockRect.height / 2));
     if (verticalDist > effectRange * 1.5) {
       resetDock();
@@ -313,13 +421,11 @@ function initMagneticDock() {
       const distance = Math.hypot(e.clientX - centerX, e.clientY - centerY);
 
       if (distance < effectRange) {
-        // Gaussian distribution scaling function for Apple-like elasticity
         const scale = Math.exp(-Math.pow(distance, 2) / (2 * Math.pow(65, 2)));
         const finalSize = baseSize + maxDelta * scale;
         
         item.style.width = `${finalSize}px`;
         item.style.height = `${finalSize}px`;
-        // Subtle vertical lift when cursor is very close
         item.style.transform = `translateY(${-12 * scale}px)`;
       } else {
         item.style.width = `${baseSize}px`;
