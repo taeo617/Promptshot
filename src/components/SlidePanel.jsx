@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../store/AppContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './SlidePanel.css';
 
 export default function SlidePanel() {
@@ -9,9 +9,11 @@ export default function SlidePanel() {
   const [editedPrompt, setEditedPrompt] = useState('');
 
   // Sync prompt when analysis changes
-  if (analysisResult?.promptSuggestion && !editedPrompt) {
-    setEditedPrompt(analysisResult.promptSuggestion);
-  }
+  useEffect(() => {
+    if (analysisResult?.promptSuggestion) {
+      setEditedPrompt(analysisResult.promptSuggestion);
+    }
+  }, [analysisResult]);
 
   const handleClose = () => {
     dispatch({ type: 'TOGGLE_SLIDE_PANEL', payload: false });

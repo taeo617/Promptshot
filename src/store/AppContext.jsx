@@ -163,7 +163,7 @@ function appReducer(state, action) {
 
     // Toasts
     case 'ADD_TOAST': {
-      const toast = { id: Date.now(), ...action.payload };
+      const toast = action.payload;
       return { ...state, toasts: [...state.toasts, toast] };
     }
     case 'REMOVE_TOAST':
@@ -285,9 +285,10 @@ export function AppProvider({ children }) {
   }, [state.users]);
 
   const addToast = useCallback((message, type = 'info') => {
-    dispatch({ type: 'ADD_TOAST', payload: { message, type } });
+    const id = Date.now();
+    dispatch({ type: 'ADD_TOAST', payload: { id, message, type } });
     setTimeout(() => {
-      dispatch({ type: 'REMOVE_TOAST', payload: Date.now() });
+      dispatch({ type: 'REMOVE_TOAST', payload: id });
     }, 3500);
   }, []);
 
