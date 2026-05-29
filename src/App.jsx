@@ -596,7 +596,7 @@ export default function App() {
                 <Field label="색상">
                   <div className="flex items-center gap-2.5">
                     {COLORS.map((c) => { const on = form.color === c; return (
-                      <button key={c} onClick={() => setForm({ ...form, color: c })} className="grid h-8 w-8 place-items-center rounded-[4px] transition-transform" title={c} style={{ background: PASTEL[c].bg, border: `1.5px solid ${PASTEL[c].line}`, boxShadow: on ? `0 0 0 2px #fff, 0 0 0 3.5px ${C.ink}` : "none", transform: on ? "scale(1.06)" : "none" }}><span className="h-3 w-3 rounded-full" style={{ background: PASTEL[c].dot }} /></button>
+                      <button key={c} onClick={() => setForm({ ...form, color: c })} className="flex h-6 w-6 place-items-center justify-center rounded-full transition-transform" title={c} style={{ background: PASTEL[c].dot, boxShadow: on ? `0 0 0 2px #fff, 0 0 0 3px ${C.ink}` : "none", transform: on ? "scale(1.15)" : "none" }}></button>
                     ); })}
                   </div>
                 </Field>
@@ -605,8 +605,17 @@ export default function App() {
                   <div className="mb-1.5 flex items-center justify-between">
                     <span className="text-xs font-medium" style={{ color: C.muted }}>참석자 <span style={{ color: "#fff" }}>· 참석 인원 {form.attendees.length}명</span></span>
                   </div>
-                  <div className="rounded-lg border px-3 py-2.5 text-sm" style={{ borderColor: errs.att ? "#C0392B" : C.border, background: "#FAFAF6", minHeight: 46, color: form.attendees.length ? C.text : C.faint }}>
-                    {form.attendees.length ? form.attendees.map(memLabel).join(", ") : "선택된 참석자가 없어요"}
+                  <div className="flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2.5" style={{ borderColor: errs.att ? "#C0392B" : C.border, background: "#FAFAF6", minHeight: 46 }}>
+                    {form.attendees.length ? form.attendees.map((id) => {
+                      const m = M(id);
+                      if (!m) return null;
+                      return (
+                        <span key={id} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px]" style={{ background: "#EAE9E5", color: C.text }}>
+                          <span className="h-2 w-2 rounded-full" style={{ background: C.muted }} />
+                          <span><span className="font-bold">{m.team}</span> <span className="font-medium">{m.name}님</span></span>
+                        </span>
+                      );
+                    }) : <span className="text-sm" style={{ color: C.faint }}>선택된 참석자가 없어요</span>}
                   </div>
                   {errs.att && <div className="mt-1.5 flex items-center gap-1 text-xs font-semibold" style={{ color: PASTEL.red.text }}><AlertCircle size={12} />{errs.att}</div>}
                   <button onClick={openPicker} className="lift mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border py-2.5 text-sm font-medium" style={{ borderColor: C.ink, color: C.ink }}><UserPlus size={16} /> 참석자 선택</button>
