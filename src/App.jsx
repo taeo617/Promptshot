@@ -85,7 +85,7 @@ function Wordmark({ size = 20 }) {
   return <span className="tracking-tight" style={{ fontSize: size, color: C.ink, lineHeight: 1 }}><span style={{ fontWeight: 500, color: C.muted }}>found</span><span style={{ fontWeight: 800 }}>founded</span></span>;
 }
 function Avatar({ label, size = 36, solid = false }) {
-  return <span className="grid shrink-0 place-items-center rounded-full font-extrabold" style={{ width: size, height: size, fontSize: size * 0.36, background: solid ? C.yellow : "#fff", border: `1px solid ${solid ? C.yellow : C.border}`, color: C.ink }}>{label}</span>;
+  return <span className="grid shrink-0 place-items-center rounded-full font-extrabold" style={{ width: size, height: size, fontSize: size * 0.36, background: solid ? "#EAEBE6" : "#fff", border: `1px solid ${C.border}`, color: C.muted }}>{label}</span>;
 }
 
 /* ===================== login modal ===================== */
@@ -512,7 +512,7 @@ export default function App() {
                     <div><div className="text-[16px] font-extrabold">{room.name}</div><div className="mt-0.5 text-xs" style={{ color: C.muted }}>{fmtK(anchor)} · 09:00 – 19:00</div></div>
                     <button onClick={() => tryCreate(roomId, defStart())} className="lift flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-extrabold" style={{ background: C.yellow, color: C.ink, boxShadow: "0 6px 16px rgba(232,190,0,.38)" }}><Plus size={16} /> 새 예약</button>
                   </div>
-                  <div className="sc max-h-[560px] overflow-y-auto px-4 py-4 sm:px-5"><div className="flex"><Gutter /><div className="min-w-0 flex-1"><Track rid={roomId} /></div></div></div>
+                  <div className="sc overflow-y-auto px-4 py-4 sm:px-5 pb-8"><div className="flex"><Gutter /><div className="min-w-0 flex-1"><Track rid={roomId} /></div></div></div>
                 </section>
               </>
             )}
