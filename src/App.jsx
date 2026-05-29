@@ -123,8 +123,8 @@ function genDash(year, month, roomFilter) {
     const wd = new Date(year, month, d).getDay();
     const weekend = wd === 0 || wd === 6;
     const peak = d <= 6 ? 1.7 : 1;
-    let b = roomFilter === "small" ? 0 : (weekend ? Math.floor(r() * 2) : Math.round((r() * 4 + 1) * peak));
-    let s = roomFilter === "big" ? 0 : (weekend ? Math.floor(r() * 2) : Math.round((r() * 3 + 1) * peak));
+    let b = roomFilter === "small" ? 0 : (weekend ? 0 : Math.round((r() * 4 + 1) * peak));
+    let s = roomFilter === "big" ? 0 : (weekend ? 0 : Math.round((r() * 3 + 1) * peak));
     daily.push({ d, wd, big: b, small: s, total: b + s });
     big += b; small += s;
   }
@@ -132,9 +132,9 @@ function genDash(year, month, roomFilter) {
   const totalHours = Math.round(total * 0.92);
   const mostUsed = big >= small ? "큰 회의실" : "작은 회의실";
   const leastUsed = big >= small ? "작은 회의실" : "큰 회의실";
-  const noShowRate = Math.max(0, Math.round(r() * 9));
-  const savedByEnd = Math.round(totalHours * 0.17);
-  const savedByNoShow = Math.round(totalHours * (noShowRate / 100) * 1.4);
+  const noShowRate = 0;
+  const savedByEnd = 0;
+  const savedByNoShow = 0;
   return { days, daily, total, totalHours, mostUsed, leastUsed, mostHours: Math.round(Math.max(big, small) * 0.92), leastHours: Math.round(Math.min(big, small) * 0.92), noShowRate, savedByEnd, savedByNoShow };
 }
 const HEAT = ["#EFEEE9", "#FFF1B8", "#FFE271", "#FFD21F", "#E8BE00"];
