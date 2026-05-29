@@ -1,92 +1,706 @@
-import { useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { AppProvider, useApp } from './store/AppContext';
-import Header from './components/Header';
-import Dashboard from './components/Dashboard';
-import Library from './components/Library';
-import AdminDashboard from './components/AdminDashboard';
-import SlidePanel from './components/SlidePanel';
-import AuthModal from './components/AuthModal';
-import ToastContainer from './components/Toast';
-import './App.css';
+import { useState, useEffect, useMemo, useRef } from "react";
+import {
+  Calendar, CalendarDays, Clock, Users, Monitor, Video, Plus, X, Check,
+  CheckCircle2, Repeat, AlertCircle, ChevronLeft, ChevronRight, Trash2,
+  Building2, List, LogOut, Lock, User, UserPlus, GripVertical, LogIn,
+  LayoutDashboard, HelpCircle,
+} from "lucide-react";
 
-function AppContent() {
-  const [currentView, setCurrentView] = useState('dashboard');
-  const { state } = useApp();
+/* ===================== design tokens ===================== */
+const C = {
+  ink: "#181818", paper: "#FFFFFF", bg: "#F7F7F4",
+  yellow: "#FFD400", yellowDeep: "#E8BE00", yellowSoft: "#FFF7CC",
+  border: "#ECEBE6", line: "#F1F0EB", text: "#181818", muted: "#6E6C64", faint: "#AFACA2",
+};
+const PASTEL = {
+  yellow: { bg: "#FFF3C4", text: "#947000", dot: "#F0C300", line: "#F4E3A0" },
+  peach:  { bg: "#FFE6D6", text: "#C2570C", dot: "#FB9D5B", line: "#FBD7BE" },
+  pink:   { bg: "#FCE0EC", text: "#C03A72", dot: "#F083AE", line: "#F7CBDC" },
+  purple: { bg: "#EAE3FB", text: "#6D45D0", dot: "#AD93F2", line: "#DACEF6" },
+  blue:   { bg: "#DCEBFD", text: "#2A5DC7", dot: "#6FA8FA", line: "#C4DCFB" },
+  mint:   { bg: "#D8F5E5", text: "#1F8A5B", dot: "#5CD79A", line: "#BEEBD2" },
+};
+const COLORS = ["yellow", "peach", "pink", "purple", "blue", "mint"];
+const pal = (c) => PASTEL[c] || PASTEL.yellow;
 
-  const handleViewChange = (view) => {
-    if (view === 'admin' && !state.isAdmin) return;
-    setCurrentView(view);
-  };
+const EQUIP = { monitor: { label: "모니터", Icon: Monitor }, video: { label: "화상회의", Icon: Video } };
+const ROOMS = [
+  { id: "big",   name: "큰 회의실",   capacity: 8, equip: ["monitor", "video"] },
+  { id: "small", name: "작은 회의실", capacity: 6, equip: ["monitor"] },
+];
 
+/* members — 성 제외, 표시는 "{name}님" */
+const MEMBERS = [
+  { id: "m15", name: "보아", team: "VD", role: "디렉터", group: "director" },
+  { id: "m1",  name: "규호", team: "ID", role: "디렉터", group: "director" },
+  { id: "m5",  name: "준구", team: "ID", role: "디렉터", group: "director" },
+  { id: "m8",  name: "유진", team: "ID", role: "시니어 디자이너",   group: "staff" },
+  { id: "m10", name: "현열", team: "ID", role: "시니어 디자이너",   group: "staff" },
+  { id: "m2",  name: "진우", team: "ID", role: "디자이너",         group: "staff" },
+  { id: "m3",  name: "다은", team: "ID", role: "디자이너",         group: "staff" },
+  { id: "m6",  name: "태영", team: "ID", role: "디자이너",         group: "staff" },
+  { id: "m7",  name: "경선", team: "ID", role: "디자이너",         group: "staff" },
+  { id: "m9",  name: "준범", team: "ID", role: "프리랜서 디자이너", group: "staff" },
+  { id: "m11", name: "수현", team: "VD", role: "디자이너",         group: "staff" },
+  { id: "m12", name: "혜경", team: "VD", role: "디자이너",         group: "staff" },
+  { id: "m13", name: "지민", team: "VD", role: "디자이너",         group: "staff" },
+  { id: "m4",  name: "도영", team: "VD", role: "인턴",            group: "staff" },
+  { id: "m14", name: "정수", team: "ID", role: "인턴",            group: "staff" },
+];
+const M = (id) => MEMBERS.find((x) => x.id === id);
+const memLabel = (id) => { const m = M(id); return m ? `${m.team} ${m.name}님` : id; };
+
+/* timeline geometry */
+const DAY_START = 9 * 60, DAY_END = 19 * 60, STEP = 30, PX = 30;
+const SLOTS = (DAY_END - DAY_START) / STEP, GUTTER = 48;
+
+/* helpers */
+const pad = (n) => String(n).padStart(2, "0");
+const toMin = (t) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+const toHHMM = (m) => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+const ampm = (t) => { const m = toMin(t), h = Math.floor(m / 60); const l = h < 12 ? "오전" : "오후"; const hh = h % 12 === 0 ? 12 : h % 12; return `${l} ${pad(hh)}:${pad(m % 60)}`; };
+const WEEK = ["일", "월", "화", "수", "목", "금", "토"];
+const keyOf = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const fmtK = (d) => `${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEK[d.getDay()]})`;
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const dayOnly = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const sameDay = (a, b) => keyOf(a) === keyOf(b);
+const TIMES = Array.from({ length: SLOTS + 1 }, (_, i) => toHHMM(DAY_START + i * STEP));
+let UID = 100; const nid = () => `r${UID++}`;
+
+/* ===================== shared atoms ===================== */
+function TeamTag({ team }) {
+  const id = team === "ID";
+  return <span className="inline-grid h-[18px] min-w-[24px] place-items-center rounded px-1 text-[10px] font-extrabold" style={id ? { background: C.ink, color: "#fff" } : { background: C.yellow, color: C.ink }}>{team}</span>;
+}
+function EquipChip({ type }) {
+  const e = EQUIP[type]; if (!e) return null; const { Icon } = e;
+  return <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium" style={{ background: "#F0EFEA", color: C.muted }}><Icon size={12} /> {e.label}</span>;
+}
+function StatusPill({ kind, text }) {
+  const m = { busy: { bg: "#FBE7E7", fg: "#C0392B", dot: "#D9534F" }, soon: { bg: "#F1F0EA", fg: "#5C5A52", dot: "#A8A69C" }, free: { bg: C.yellowSoft, fg: "#8A6D00", dot: C.yellowDeep } }[kind];
+  return <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: m.bg, color: m.fg }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: m.dot }} /> {text}</span>;
+}
+function Wordmark({ size = 20 }) {
+  return <span className="tracking-tight" style={{ fontSize: size, color: C.ink, lineHeight: 1 }}><span style={{ fontWeight: 500, color: C.muted }}>found</span><span style={{ fontWeight: 800 }}>founded</span></span>;
+}
+function Avatar({ label, size = 36, solid = false }) {
+  return <span className="grid shrink-0 place-items-center rounded-full font-extrabold" style={{ width: size, height: size, fontSize: size * 0.36, background: solid ? C.yellow : "#fff", border: `1px solid ${solid ? C.yellow : C.border}`, color: C.ink }}>{label}</span>;
+}
+
+/* ===================== login modal ===================== */
+function LoginModal({ message, onClose, onLogin }) {
+  const [name, setName] = useState(""); const [pw, setPw] = useState(""); const [err, setErr] = useState("");
+  const submit = () => { if (!name.trim()) return setErr("이름을 입력해주세요."); if (pw !== "3377") return setErr("비밀번호가 올바르지 않아요."); onLogin(name.trim()); };
   return (
-    <div className="app">
-      <Header currentView={currentView} onViewChange={handleViewChange} />
-
-      <main className="app__main">
-        <div className="app__content">
-          <AnimatePresence mode="wait">
-            {currentView === 'dashboard' && (
-              <motion.div
-                key="dashboard"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <Dashboard />
-              </motion.div>
-            )}
-            {currentView === 'library' && (
-              <motion.div
-                key="library"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <Library />
-              </motion.div>
-            )}
-            {currentView === 'admin' && state.isAdmin && (
-              <motion.div
-                key="admin"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <AdminDashboard />
-              </motion.div>
-            )}
-          </AnimatePresence>
+    <div className="ov fixed inset-0 z-[70] flex items-end justify-center p-0 sm:items-center sm:p-4" style={{ background: "rgba(20,20,20,.5)" }} onClick={onClose}>
+      <div className="sheet w-full rounded-t-3xl bg-white p-6 sm:max-w-sm sm:rounded-3xl" style={{ boxShadow: "0 -10px 40px rgba(0,0,0,.18)" }} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between"><Wordmark size={20} /><button onClick={onClose} className="grid h-8 w-8 place-items-center rounded-lg" style={{ color: C.faint }}><X size={18} /></button></div>
+        <p className="mt-4 text-[15px] font-bold">{message}</p>
+        <p className="mt-1 text-[12px]" style={{ color: C.faint }}>이름과 비밀번호를 입력해 로그인하세요.</p>
+        <div className="mt-4 flex items-center gap-2 rounded-xl border px-3" style={{ borderColor: C.border }}>
+          <User size={16} style={{ color: C.faint }} />
+          <input className="inp w-full bg-transparent py-2.5 text-sm outline-none" value={name} onChange={(e) => { setName(e.target.value); setErr(""); }} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="이름 (예: 태영)" autoFocus />
         </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="app__footer">
-        <div className="app__footer-inner">
-          <span className="app__footer-brand mono">PROMPTSHOT</span>
-          <span className="app__footer-copy">
-            © 2026 PromptShot. Structured Minimal + Industrial Anti-Graffiti.
-          </span>
+        <div className="mt-2.5 flex items-center gap-2 rounded-xl border px-3" style={{ borderColor: C.border }}>
+          <Lock size={16} style={{ color: C.faint }} />
+          <input type="password" className="inp w-full bg-transparent py-2.5 text-sm outline-none" value={pw} onChange={(e) => { setPw(e.target.value); setErr(""); }} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="비밀번호" />
         </div>
-      </footer>
-
-      {/* Overlays */}
-      <SlidePanel />
-      <AuthModal />
-      <ToastContainer />
+        {err && <div className="mt-3 flex items-center gap-1.5 text-xs font-semibold" style={{ color: "#C0392B" }}><AlertCircle size={13} />{err}</div>}
+        <button onClick={submit} className="lift mt-5 flex w-full items-center justify-center gap-1.5 rounded-xl py-3 text-sm font-extrabold" style={{ background: C.yellow, color: C.ink, boxShadow: "0 8px 18px rgba(232,190,0,.4)" }}><LogIn size={16} /> 로그인</button>
+      </div>
     </div>
   );
 }
 
-function App() {
+/* ===================== dashboard ===================== */
+function lcg(seed) { let s = seed % 2147483647; if (s <= 0) s += 2147483646; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
+function genDash(year, month, roomFilter) {
+  const days = new Date(year, month + 1, 0).getDate();
+  const r = lcg((year * 100 + month + 1) * 13 + 7);
+  const daily = []; let big = 0, small = 0;
+  for (let d = 1; d <= days; d++) {
+    const wd = new Date(year, month, d).getDay();
+    const weekend = wd === 0 || wd === 6;
+    const peak = d <= 6 ? 1.7 : 1;
+    let b = roomFilter === "small" ? 0 : (weekend ? Math.floor(r() * 2) : Math.round((r() * 4 + 1) * peak));
+    let s = roomFilter === "big" ? 0 : (weekend ? Math.floor(r() * 2) : Math.round((r() * 3 + 1) * peak));
+    daily.push({ d, wd, big: b, small: s, total: b + s });
+    big += b; small += s;
+  }
+  const total = big + small;
+  const totalHours = Math.round(total * 0.92);
+  const mostUsed = big >= small ? "큰 회의실" : "작은 회의실";
+  const leastUsed = big >= small ? "작은 회의실" : "큰 회의실";
+  const noShowRate = Math.max(0, Math.round(r() * 9));
+  const savedByEnd = Math.round(totalHours * 0.17);
+  const savedByNoShow = Math.round(totalHours * (noShowRate / 100) * 1.4);
+  return { days, daily, total, totalHours, mostUsed, leastUsed, mostHours: Math.round(Math.max(big, small) * 0.92), leastHours: Math.round(Math.min(big, small) * 0.92), noShowRate, savedByEnd, savedByNoShow };
+}
+const HEAT = ["#EFEEE9", "#FFF1B8", "#FFE271", "#FFD21F", "#E8BE00"];
+function heatColor(v, max) { if (!v) return HEAT[0]; const lv = Math.min(4, 1 + Math.floor((v / Math.max(1, max)) * 3.99)); return HEAT[lv]; }
+
+function StatCard({ label, value, sub, delay }) {
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <div className="rise rounded-2xl border bg-white p-4" style={{ borderColor: C.border, animationDelay: `${delay}ms` }}>
+      <div className="flex items-center gap-1 text-[12px] font-semibold" style={{ color: C.muted }}>{label}<HelpCircle size={12} style={{ color: C.faint }} /></div>
+      {sub && <div className="mt-3 text-[11px] font-medium" style={{ color: C.faint }}>{sub}</div>}
+      <div className={`${sub ? "mt-0.5" : "mt-4"} text-[22px] font-extrabold tracking-tight`}>{value}</div>
+    </div>
   );
 }
 
-export default App;
+function Dashboard({ month, setMonth, roomF, setRoomF, now }) {
+  const data = useMemo(() => genDash(month.getFullYear(), month.getMonth(), roomF), [month, roomF]);
+  const maxTotal = Math.max(1, ...data.daily.map((x) => x.total));
+  // heatmap grid
+  const first = new Date(month.getFullYear(), month.getMonth(), 1);
+  const gridStart = addDays(first, -first.getDay());
+  const heatCells = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
+  const dailyByDate = {}; data.daily.forEach((x) => { dailyByDate[x.d] = x; });
+
+  // bar chart geometry
+  const barW = 22, gap = 8, chartH = 170, padB = 22, padT = 8;
+  const innerW = data.days * barW + (data.days - 1) * gap;
+  const scale = (chartH - padB - padT) / maxTotal;
+
+  return (
+    <section>
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-lg font-extrabold">회의실 현황 대시보드</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center rounded-xl border bg-white" style={{ borderColor: C.border }}>
+            <button onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} className="lift grid h-9 w-9 place-items-center rounded-l-xl" style={{ color: C.muted }}><ChevronLeft size={17} /></button>
+            <div className="px-2 text-sm font-bold">{month.getFullYear()}년 {month.getMonth() + 1}월</div>
+            <button onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} className="lift grid h-9 w-9 place-items-center rounded-r-xl" style={{ color: C.muted }}><ChevronRight size={17} /></button>
+          </div>
+          <div className="inline-flex rounded-xl border bg-white p-1" style={{ borderColor: C.border }}>
+            {[["all", "전체"], ["big", "큰 회의실"], ["small", "작은 회의실"]].map(([k, l]) => (
+              <button key={k} onClick={() => setRoomF(k)} className="rounded-lg px-3 py-1.5 text-xs font-bold" style={roomF === k ? { background: C.ink, color: "#fff" } : { color: C.muted }}>{l}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label="총 회의실 예약 수" value={`${data.total}건`} delay={0} />
+        <StatCard label="총 회의실 사용 시간" value={`${data.totalHours}시간`} delay={40} />
+        <StatCard label="가장 많이 사용된 회의실" sub={`${data.mostHours}시간`} value={data.mostUsed} delay={80} />
+        <StatCard label="가장 적게 사용된 회의실" sub={`${data.leastHours}시간`} value={data.leastUsed} delay={120} />
+      </div>
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <StatCard label="노쇼 비율" value={`${data.noShowRate}%`} delay={160} />
+        <StatCard label="종료로 절약된 시간" value={`${data.savedByEnd}시간`} delay={200} />
+        <StatCard label="노쇼로 절약된 시간" value={`${data.savedByNoShow}시간`} delay={240} />
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* heatmap */}
+        <div className="rise rounded-2xl border bg-white p-5" style={{ borderColor: C.border, animationDelay: "120ms" }}>
+          <div className="mb-3 flex items-center gap-2">
+            <span className="rounded-md px-2 py-0.5 text-xs font-extrabold" style={{ background: C.yellowSoft, color: "#8A6D00" }}>{month.getMonth() + 1}월</span>
+            <span className="text-sm font-bold">회의실 이용 현황</span>
+          </div>
+          <div className="grid grid-cols-7 gap-1.5">
+            {WEEK.map((w, i) => <div key={w} className="text-center text-[10px] font-bold" style={{ color: i === 0 ? "#C0392B" : i === 6 ? "#2A5DC7" : C.faint }}>{w}</div>)}
+            {heatCells.map((c, i) => {
+              const inM = c.getMonth() === month.getMonth();
+              const v = inM ? (dailyByDate[c.getDate()]?.total || 0) : 0;
+              return <div key={i} className="aspect-square rounded-md" title={inM ? `${c.getDate()}일 · ${v}건` : ""} style={{ background: inM ? heatColor(v, maxTotal) : "transparent", border: inM ? `1px solid ${C.line}` : "none" }} />;
+            })}
+          </div>
+          <div className="mt-3 flex items-center justify-end gap-1.5 text-[10px] font-medium" style={{ color: C.faint }}>
+            적음 {HEAT.map((h, i) => <span key={i} className="h-3 w-3 rounded-sm" style={{ background: h, border: `1px solid ${C.line}` }} />)} 많음
+          </div>
+        </div>
+
+        {/* bar chart */}
+        <div className="rise rounded-2xl border bg-white p-5" style={{ borderColor: C.border, animationDelay: "160ms" }}>
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="rounded-md px-2 py-0.5 text-xs font-extrabold" style={{ background: "#EEF4FF", color: "#2A5DC7" }}>{month.getMonth() + 1}월</span>
+              <span className="text-sm font-bold">일별 회의 현황</span>
+            </div>
+            <div className="flex items-center gap-3 text-[11px] font-semibold" style={{ color: C.muted }}>
+              <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "#44423B" }} />큰</span>
+              <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: C.yellowDeep }} />작은</span>
+            </div>
+          </div>
+          <div className="sc overflow-x-auto">
+            <svg width={Math.max(innerW + 8, 320)} height={chartH} style={{ display: "block" }}>
+              {[0, 0.5, 1].map((t, i) => { const y = padT + (chartH - padB - padT) * (1 - t); return <g key={i}><line x1="0" x2={innerW + 8} y1={y} y2={y} stroke={C.line} strokeWidth="1" /><text x="0" y={y - 3} fontSize="9" fill={C.faint}>{Math.round(maxTotal * t)}</text></g>; })}
+              {data.daily.map((x, i) => {
+                const xx = i * (barW + gap);
+                const sH = x.small * scale, bH = x.big * scale;
+                const baseY = chartH - padB;
+                return (
+                  <g key={i}>
+                    <rect x={xx} y={baseY - sH} width={barW} height={sH} fill={C.yellowDeep} rx="2" />
+                    <rect x={xx} y={baseY - sH - bH} width={barW} height={bH} fill="#44423B" rx="2" />
+                    {(x.d % 5 === 1) && <text x={xx + barW / 2} y={chartH - 6} fontSize="9" fill={C.faint} textAnchor="middle">{x.d}</text>}
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        </div>
+      </div>
+      <p className="mt-3 text-[11px]" style={{ color: C.faint }}>* 대시보드 지표는 해당 월의 이용 현황을 집계해 보여줍니다.</p>
+    </section>
+  );
+}
+
+/* ===================== app ===================== */
+export default function App() {
+  const [user, setUser] = useState(null);
+  const userRef = useRef(null); userRef.current = user;
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => { const t = setInterval(() => setNow(new Date()), 20000); return () => clearInterval(t); }, []);
+
+  const [section, setSection] = useState("book");
+  const [view, setView] = useState("calendar");
+  const [anchor, setAnchor] = useState(() => dayOnly(new Date()));
+  const [roomId, setRoomId] = useState("big");
+  const [reservations, setReservations] = useState([]);
+  const [form, setForm] = useState(null);
+  const [errs, setErrs] = useState({});
+  const [detail, setDetail] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [temp, setTemp] = useState([]);
+  const [dz, setDz] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMsg, setAuthMsg] = useState("");
+  const [authPending, setAuthPending] = useState(null);
+  const [dashMonth, setDashMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [dashRoom, setDashRoom] = useState("all");
+
+  const today = dayOnly(now);
+  const selKey = keyOf(anchor);
+  const isToday = sameDay(anchor, today);
+  const isCurMonth = anchor.getFullYear() === today.getFullYear() && anchor.getMonth() === today.getMonth();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const room = ROOMS.find((r) => r.id === roomId);
+
+  const getMeId = () => { const u = userRef.current; const m = MEMBERS.find((x) => u && (x.name.includes(u) || u.includes(x.name))); return m ? m.id : null; };
+  const isMine = (r) => !!user && r.owner === user;
+  const showToast = (m) => { setToast(m); setTimeout(() => setToast(null), 2600); };
+
+  function requireAuth(fn, msg) { if (userRef.current) return fn(); setAuthMsg(msg || "계속하려면 로그인이 필요해요."); setAuthPending(() => fn); setAuthOpen(true); }
+  function doLogin(name) { setReservations((p) => p.map((r) => (r.owner === "나" ? { ...r, owner: name } : r))); setUser(name); setAuthOpen(false); }
+  useEffect(() => { if (user && authPending) { const p = authPending; setAuthPending(null); p(); } }, [user]); // eslint-disable-line
+
+  const myRes = useMemo(() => reservations.filter((r) => r.owner === user).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start)), [reservations, user]);
+  const byDate = useMemo(() => { const m = {}; reservations.forEach((r) => { (m[r.date] ||= []).push(r); }); return m; }, [reservations]);
+
+  function roomStatus(rid) {
+    const list = reservations.filter((r) => r.roomId === rid && r.date === selKey);
+    if (isToday) {
+      const cur = list.find((r) => toMin(r.start) <= nowMin && nowMin < toMin(r.end));
+      if (cur) return { kind: "busy", text: `사용 중 · ~${cur.end}`, count: list.length };
+      const next = list.filter((r) => toMin(r.start) > nowMin).sort((a, b) => toMin(a.start) - toMin(b.start))[0];
+      if (next) return { kind: "soon", text: `다음 ${next.start}`, count: list.length };
+      return { kind: "free", text: "사용 가능", count: list.length };
+    }
+    return { kind: list.length ? "soon" : "free", text: list.length ? `예약 ${list.length}건` : "사용 가능", count: list.length };
+  }
+  function overlaps(rid, date, s, e, ignore) {
+    const a = toMin(s), b = toMin(e);
+    return reservations.some((r) => r.roomId === rid && r.date === date && r.id !== ignore && !(b <= toMin(r.start) || a >= toMin(r.end)));
+  }
+  const defStart = () => Math.min(Math.max(isToday ? Math.ceil(nowMin / 30) * 30 : 10 * 60, DAY_START), DAY_END - 60);
+  function openCreate(rid, startMin, date) { setErrs({}); const me = getMeId(); setForm({ id: null, roomId: rid, title: "", date: date || selKey, start: toHHMM(startMin), end: toHHMM(Math.min(startMin + 60, DAY_END)), attendees: me ? [me] : [], repeat: false, color: "yellow" }); }
+  const tryCreate = (rid, sm, date) => requireAuth(() => openCreate(rid, sm, date), "일정을 추가하려면 로그인이 필요해요.");
+  const openEdit = (r) => { setErrs({}); setForm({ ...r, attendees: [...r.attendees] }); };
+
+  function saveForm() {
+    const f = form; const e = {};
+    if (!f.title.trim()) e.title = "회의 제목을 입력해주세요.";
+    if (toMin(f.end) <= toMin(f.start)) e.time = "종료 시간은 시작 시간보다 늦어야 해요.";
+    else if (overlaps(f.roomId, f.date, f.start, f.end, f.id)) e.time = "선택한 시간에 이미 다른 예약이 있어요.";
+    if (f.attendees.length === 0) e.att = "참석자를 1명 이상 선택해주세요.";
+    if (f.attendees.length > ROOMS.find((r) => r.id === f.roomId).capacity) e.att = "참석 인원이 회의실 정원을 초과했어요.";
+    setErrs(e);
+    if (Object.keys(e).length) return;
+    if (f.id) { setReservations((p) => p.map((r) => (r.id === f.id ? { ...r, ...f, title: f.title.trim() } : r))); showToast("예약을 수정했어요."); }
+    else { setReservations((p) => [...p, { ...f, id: nid(), title: f.title.trim(), owner: user }]); showToast("예약이 완료됐어요."); }
+    setForm(null);
+  }
+  function cancelRes(id) { requireAuth(() => { setReservations((p) => p.filter((r) => r.id !== id)); setForm(null); setDetail(null); showToast("예약을 삭제했어요."); }, "일정을 삭제하려면 로그인이 필요해요."); }
+
+  function openPicker() { setTemp([...(form.attendees || [])]); setPickerOpen(true); }
+  const toggleTemp = (id) => setTemp((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  const addTemp = (id) => setTemp((p) => (id && !p.includes(id) ? [...p, id] : p));
+  function donePicker() { setForm((f) => ({ ...f, attendees: [...temp] })); setErrs((e) => ({ ...e, att: undefined })); setPickerOpen(false); }
+
+  const onBlockClick = (r) => (isMine(r) ? openEdit(r) : setDetail(r));
+
+  /* ----- timeline renderers ----- */
+  const Gutter = () => (
+    <div className="relative shrink-0" style={{ width: GUTTER, height: SLOTS * PX }}>
+      {Array.from({ length: (DAY_END - DAY_START) / 60 + 1 }, (_, i) => <div key={i} className="absolute -translate-y-1/2 text-[11px] font-semibold" style={{ top: i * 2 * PX, color: C.faint }}>{pad(9 + i)}</div>)}
+    </div>
+  );
+  const Track = ({ rid }) => {
+    const list = reservations.filter((r) => r.roomId === rid && r.date === selKey).sort((a, b) => toMin(a.start) - toMin(b.start));
+    return (
+      <div className="relative w-full" style={{ height: SLOTS * PX }}>
+        {Array.from({ length: SLOTS }, (_, i) => { const sm = DAY_START + i * STEP; return <div key={i} className="slot absolute left-0 right-0 border-t" style={{ top: i * PX, height: PX, borderColor: i % 2 ? "#F4F3EE" : "#EAE9E2" }} onClick={() => tryCreate(rid, sm)} />; })}
+        {list.map((r) => {
+          const top = ((toMin(r.start) - DAY_START) / STEP) * PX, h = ((toMin(r.end) - toMin(r.start)) / STEP) * PX, p = pal(r.color), mine = isMine(r);
+          return (
+            <div key={r.id} className="blk absolute overflow-hidden rounded-xl border px-2.5 py-1.5" style={{ top: top + 2, height: h - 4, left: 5, right: 5, background: p.bg, borderColor: p.line, color: p.text }} onClick={() => onBlockClick(r)}>
+              <div className="flex items-center gap-1.5"><span className="h-2 w-2 shrink-0 rounded-full" style={{ background: p.dot }} /><span className="truncate text-[13px] font-bold">{r.title}</span>{r.repeat && <Repeat size={11} />}{mine && <span className="ml-auto rounded px-1 text-[10px] font-bold" style={{ background: "rgba(255,255,255,.7)", color: p.text }}>내 예약</span>}</div>
+              {h > 34 && <div className="mt-0.5 truncate text-[11px] font-medium" style={{ opacity: .85 }}>{r.start} ~ {r.end} · {r.attendees.length}명</div>}
+            </div>
+          );
+        })}
+        {isToday && nowMin >= DAY_START && nowMin <= DAY_END && (
+          <div className="pointer-events-none absolute left-0 right-0 z-10" style={{ top: ((nowMin - DAY_START) / STEP) * PX }}><div className="flex items-center"><span className="h-2 w-2 rounded-full" style={{ background: C.ink }} /><span className="h-px flex-1" style={{ background: C.ink }} /></div></div>
+        )}
+      </div>
+    );
+  };
+
+  const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+  const gridStart = addDays(first, -first.getDay());
+  const cells = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
+
+  const NAV = [["book", "예약", CalendarDays], ["mine", "내 예약", List], ["dash", "대시보드", LayoutDashboard]];
+
+  return (
+    <div style={{ background: C.bg, color: C.text, minHeight: "100vh" }} className="w-full">
+      <style>{`@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css");
+        *{font-family:'Pretendard Variable',Pretendard,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;box-sizing:border-box;}
+        .lift{transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease;} .lift:hover{transform:translateY(-2px);} .lift:active{transform:scale(.985);}
+        .inp{transition:border-color .15s ease, box-shadow .15s ease;} .inp:focus{border-color:${C.ink}; box-shadow:0 0 0 3px rgba(255,212,0,.35);}
+        .slot{transition:background .12s ease;cursor:pointer;} .slot:hover{background:rgba(255,212,0,.20);}
+        .slot:hover::after{content:'+ 예약';position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:11px;font-weight:800;color:${C.ink};}
+        .blk{transition:transform .14s ease,box-shadow .14s ease;cursor:pointer;} .blk:hover{transform:translateX(2px);box-shadow:0 6px 16px rgba(0,0,0,.12);}
+        .cell{transition:background .14s ease;cursor:pointer;} .cell:hover{background:#FCFBF4;}
+        .mrow{cursor:grab;transition:background .12s ease,border-color .12s ease;} .mrow:active{cursor:grabbing;}
+        .fade{animation:fade .22s ease both;} @keyframes fade{from{opacity:0;transform:translateY(8px) scale(.985);}to{opacity:1;transform:none;}}
+        .sheet{animation:sheet .26s cubic-bezier(.2,.8,.2,1) both;} @keyframes sheet{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:none;}}
+        .ov{animation:ov .18s ease both;} @keyframes ov{from{opacity:0;}to{opacity:1;}}
+        .rise{animation:rise .5s cubic-bezier(.2,.8,.2,1) both;} @keyframes rise{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+        .tdrop{animation:tdrop .25s cubic-bezier(.2,.8,.2,1) both;} @keyframes tdrop{from{opacity:0;transform:translate(-50%,-12px);}to{opacity:1;transform:translateX(-50%);}}
+        .sc::-webkit-scrollbar{width:8px;height:8px;} .sc::-webkit-scrollbar-thumb{background:#DAD8CF;border-radius:8px;}
+        input,select,button{font-family:inherit;} select{appearance:none;-webkit-appearance:none;}`}</style>
+
+      {/* ===== Header ===== */}
+      <header className="sticky top-0 z-30 border-b" style={{ background: "rgba(255,255,255,.82)", borderColor: C.border, backdropFilter: "blur(10px)" }}>
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-5">
+          <button onClick={() => setSection("book")} className="flex items-center"><Wordmark size={19} /></button>
+          <nav className="hidden items-center gap-1 rounded-xl p-1 md:flex" style={{ background: "#ECEBE4" }}>
+            {NAV.map(([k, lbl, Icon]) => (
+              <button key={k} onClick={() => setSection(k)} className="lift flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-sm font-bold" style={section === k ? { background: C.ink, color: "#fff" } : { color: C.muted }}><Icon size={15} />{lbl}{k === "mine" && myRes.length ? ` · ${myRes.length}` : ""}</button>
+            ))}
+          </nav>
+          <div className="flex items-center gap-2">
+            <div className="hidden text-right leading-tight sm:block"><div className="text-[12px] font-bold">{fmtK(now)}</div><div className="text-[11px]" style={{ color: C.faint }}>{now.getHours() < 12 ? "오전" : "오후"} {pad(((now.getHours() + 11) % 12) + 1)}:{pad(now.getMinutes())}</div></div>
+            {user ? (
+              <div className="flex items-center gap-2">
+                <Avatar label={user.slice(0, 2)} size={34} />
+                <button onClick={() => setUser(null)} title="로그아웃" className="lift grid h-9 w-9 place-items-center rounded-full border" style={{ borderColor: C.border, color: C.muted }}><LogOut size={15} /></button>
+              </div>
+            ) : (
+              <button onClick={() => requireAuth(() => {}, "로그인")} className="lift flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-extrabold" style={{ background: C.yellow, color: C.ink, boxShadow: "0 6px 14px rgba(232,190,0,.35)" }}><LogIn size={15} /> 로그인</button>
+            )}
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-6xl px-4 pb-28 pt-5 sm:px-5 md:pb-10">
+        {section === "book" && (
+          <>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center rounded-xl border bg-white" style={{ borderColor: C.border }}>
+                  <button onClick={() => view === "calendar" ? setAnchor(new Date(anchor.getFullYear(), anchor.getMonth() - 1, 1)) : setAnchor(addDays(anchor, -1))} className="lift grid h-9 w-9 place-items-center rounded-l-xl" style={{ color: C.muted }}><ChevronLeft size={18} /></button>
+                  <div className="flex items-center gap-2 px-2.5 text-sm font-bold sm:px-3">{view === "calendar" ? <CalendarDays size={15} style={{ color: C.ink }} /> : <Calendar size={15} style={{ color: C.ink }} />}{view === "calendar" ? `${anchor.getFullYear()}년 ${anchor.getMonth() + 1}월` : fmtK(anchor)}</div>
+                  <button onClick={() => view === "calendar" ? setAnchor(new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1)) : setAnchor(addDays(anchor, 1))} className="lift grid h-9 w-9 place-items-center rounded-r-xl" style={{ color: C.muted }}><ChevronRight size={18} /></button>
+                </div>
+                {(view === "calendar" ? isCurMonth : isToday)
+                  ? <span className="rounded-full px-2.5 py-1 text-xs font-extrabold" style={{ background: C.yellow, color: C.ink }}>{view === "calendar" ? "이번 달" : "오늘"}</span>
+                  : <button onClick={() => setAnchor(today)} className="lift rounded-xl border px-3 py-2 text-xs font-bold" style={{ borderColor: C.border, background: "#fff", color: C.muted }}>오늘</button>}
+              </div>
+              <div className="inline-flex rounded-xl border bg-white p-1" style={{ borderColor: C.border }}>
+                {[["calendar", "캘린더", CalendarDays], ["timeline", "타임라인", List]].map(([k, lbl, Icon]) => (
+                  <button key={k} onClick={() => setView(k)} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-bold" style={view === k ? { background: C.ink, color: "#fff" } : { color: C.muted }}><Icon size={15} /><span className="hidden sm:inline">{lbl}</span></button>
+                ))}
+              </div>
+            </div>
+
+            {view === "calendar" ? (
+              <section className="rise rounded-2xl border bg-white p-2.5 sm:p-4" style={{ borderColor: C.border, boxShadow: "0 1px 3px rgba(0,0,0,.04)" }}>
+                <div className="mb-2 hidden items-center justify-end px-1 text-xs font-medium sm:flex" style={{ color: C.faint }}>날짜를 누르면 해당 날짜로 이동 · 색상은 예약 시 직접 지정</div>
+                <div className="grid grid-cols-7 overflow-hidden rounded-xl border" style={{ borderColor: C.border }}>
+                  {WEEK.map((w, i) => <div key={w} className="border-b py-2 text-center text-[11px] font-bold sm:text-xs" style={{ borderColor: C.border, background: "#FAFAF6", color: i === 0 ? "#C0392B" : i === 6 ? "#2A5DC7" : C.muted }}>{w}</div>)}
+                  {cells.map((cell, i) => {
+                    const inMonth = cell.getMonth() === anchor.getMonth(), cToday = sameDay(cell, today);
+                    const list = (byDate[keyOf(cell)] || []).slice().sort((a, b) => toMin(a.start) - toMin(b.start));
+                    return (
+                      <div key={i} onClick={() => { setAnchor(dayOnly(cell)); setView("timeline"); }} className="cell border-b border-l p-1 sm:p-1.5" style={{ borderColor: C.border, background: cToday ? C.yellowSoft : inMonth ? "#fff" : "#FBFBF7", opacity: inMonth ? 1 : .5, minHeight: 0 }}>
+                        <div className="flex items-center justify-between">
+                          <span className={cToday ? "grid h-5 w-5 place-items-center rounded-full text-[11px] font-extrabold" : "text-[12px] font-bold"} style={cToday ? { background: C.yellow, color: C.ink } : { color: cell.getDay() === 0 ? "#C0392B" : cell.getDay() === 6 ? "#2A5DC7" : C.text }}>{cell.getDate()}</span>
+                          {list.length > 0 && <span className="hidden text-[10px] font-bold sm:inline" style={{ color: C.faint }}>{list.length}</span>}
+                        </div>
+                        {/* mobile: dots */}
+                        <div className="mt-1 flex flex-wrap gap-1 sm:hidden" style={{ minHeight: 8 }}>
+                          {list.slice(0, 4).map((r) => <span key={r.id} onClick={(e) => { e.stopPropagation(); onBlockClick(r); }} className="h-1.5 w-1.5 rounded-full" style={{ background: pal(r.color).dot }} />)}
+                        </div>
+                        {/* desktop: chips */}
+                        <div className="mt-1 hidden space-y-1 sm:block" style={{ minHeight: 54 }}>
+                          {list.slice(0, 3).map((r) => { const p = pal(r.color); return (
+                            <div key={r.id} onClick={(e) => { e.stopPropagation(); onBlockClick(r); }} className="flex items-center gap-1 truncate rounded-md px-1.5 py-0.5 text-[11px] font-bold" style={{ background: p.bg, color: p.text }}>
+                              <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: p.dot }} /><span className="truncate">{r.start} {r.title}</span>
+                            </div>
+                          ); })}
+                          {list.length > 3 && <div className="px-1 text-[10px] font-bold" style={{ color: C.faint }}>+{list.length - 3} 더보기</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            ) : (
+              <>
+                <div className="mb-4 flex flex-wrap items-center gap-2.5">
+                  <div className="inline-flex rounded-xl border bg-white p-1" style={{ borderColor: C.border }}>
+                    {ROOMS.map((r) => { const on = roomId === r.id; return <button key={r.id} onClick={() => setRoomId(r.id)} className="rounded-lg px-3.5 py-1.5 text-sm font-extrabold sm:px-4" style={on ? { background: C.ink, color: "#fff" } : { color: C.muted }}>{r.name}</button>; })}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs" style={{ color: C.muted }}>
+                    <span className="inline-flex items-center gap-1 font-medium"><Users size={13} />{room.capacity}명</span>
+                    {room.equip.map((e) => <EquipChip key={e} type={e} />)}
+                  </div>
+                  <StatusPill kind={roomStatus(roomId).kind} text={roomStatus(roomId).text} />
+                </div>
+                <section className="rise rounded-2xl border bg-white" style={{ borderColor: C.border, boxShadow: "0 1px 3px rgba(0,0,0,.04)" }}>
+                  <div className="flex items-center justify-between border-b px-4 py-4 sm:px-5" style={{ borderColor: C.border }}>
+                    <div><div className="text-[16px] font-extrabold">{room.name}</div><div className="mt-0.5 text-xs" style={{ color: C.muted }}>{fmtK(anchor)} · 09:00 – 19:00</div></div>
+                    <button onClick={() => tryCreate(roomId, defStart())} className="lift flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-extrabold" style={{ background: C.yellow, color: C.ink, boxShadow: "0 6px 16px rgba(232,190,0,.38)" }}><Plus size={16} /> 새 예약</button>
+                  </div>
+                  <div className="sc max-h-[560px] overflow-y-auto px-4 py-4 sm:px-5"><div className="flex"><Gutter /><div className="min-w-0 flex-1"><Track rid={roomId} /></div></div></div>
+                </section>
+              </>
+            )}
+          </>
+        )}
+
+        {section === "mine" && (
+          <section>
+            <h2 className="mb-4 text-lg font-extrabold">내 예약</h2>
+            {!user ? (
+              <div className="grid place-items-center rounded-2xl border bg-white py-16 text-center" style={{ borderColor: C.border }}>
+                <Lock size={30} style={{ color: C.faint }} /><p className="mt-3 text-sm font-semibold" style={{ color: C.muted }}>로그인하면 내 예약을 볼 수 있어요</p>
+                <button onClick={() => requireAuth(() => setSection("mine"), "로그인하면 내 예약을 볼 수 있어요.")} className="lift mt-4 flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-extrabold" style={{ background: C.yellow, color: C.ink }}><LogIn size={15} />로그인</button>
+              </div>
+            ) : myRes.length === 0 ? (
+              <div className="grid place-items-center rounded-2xl border bg-white py-16 text-center" style={{ borderColor: C.border }}>
+                <Calendar size={32} style={{ color: C.faint }} /><p className="mt-3 text-sm font-semibold" style={{ color: C.muted }}>아직 예약이 없어요</p>
+                <button onClick={() => setSection("book")} className="lift mt-4 rounded-xl px-4 py-2 text-sm font-extrabold" style={{ background: C.yellow, color: C.ink }}>예약하러 가기</button>
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {myRes.map((r) => { const p = pal(r.color), rm = ROOMS.find((x) => x.id === r.roomId), [y, mo, da] = r.date.split("-").map(Number), d = new Date(y, mo - 1, da); return (
+                  <div key={r.id} className="lift flex items-center gap-3 rounded-2xl border bg-white p-3.5 sm:gap-4 sm:p-4" style={{ borderColor: C.border }}>
+                    <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl" style={{ background: p.bg, color: p.text }}><span className="text-lg font-extrabold">{da}</span></div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2"><span className="truncate text-[15px] font-bold">{r.title}</span>{r.repeat && <span className="inline-flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-bold" style={{ background: C.yellowSoft, color: "#8A6D00" }}><Repeat size={10} />매주</span>}</div>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium" style={{ color: C.muted }}><span className="flex items-center gap-1"><Building2 size={12} />{rm.name}</span><span className="flex items-center gap-1"><Clock size={12} />{fmtK(d)} {r.start}~{r.end}</span><span className="flex items-center gap-1"><Users size={12} />{r.attendees.length}명</span></div>
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      <button onClick={() => { setRoomId(r.roomId); setAnchor(d); openEdit(r); setSection("book"); }} className="lift rounded-lg border px-3 py-2 text-xs font-bold" style={{ borderColor: C.border, color: C.muted }}>수정</button>
+                      <button onClick={() => cancelRes(r.id)} className="lift flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-bold" style={{ background: "#FBE7E7", color: "#C0392B" }}><Trash2 size={13} /></button>
+                    </div>
+                  </div>
+                ); })}
+              </div>
+            )}
+          </section>
+        )}
+
+        {section === "dash" && <Dashboard month={dashMonth} setMonth={setDashMonth} roomF={dashRoom} setRoomF={setDashRoom} now={now} />}
+      </main>
+
+      {/* ===== mobile bottom nav ===== */}
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-t md:hidden" style={{ background: "rgba(255,255,255,.92)", borderColor: C.border, backdropFilter: "blur(10px)", paddingBottom: "env(safe-area-inset-bottom)" }}>
+        <div className="mx-auto flex max-w-md items-stretch justify-around">
+          {NAV.map(([k, lbl, Icon]) => { const on = section === k; return (
+            <button key={k} onClick={() => setSection(k)} className="relative flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-bold" style={{ color: on ? C.ink : C.faint }}>
+              {on && <span className="absolute left-1/2 top-0 h-0.5 w-8 -translate-x-1/2 rounded-full" style={{ background: C.yellow }} />}
+              <Icon size={20} />{lbl}{k === "mine" && myRes.length ? ` ${myRes.length}` : ""}
+            </button>
+          ); })}
+        </div>
+      </nav>
+
+      {/* ===== FAB (book section) ===== */}
+      {section === "book" && (
+        <button onClick={() => tryCreate(roomId, defStart())} className="lift fixed right-5 z-30 flex h-14 w-14 items-center justify-center rounded-2xl md:hidden" style={{ bottom: "calc(env(safe-area-inset-bottom) + 68px)", background: C.yellow, color: C.ink, boxShadow: "0 10px 24px rgba(232,190,0,.5)" }}><Plus size={26} /></button>
+      )}
+
+      {/* ===== Booking modal ===== */}
+      {form && (
+        <div className="ov fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4" style={{ background: "rgba(20,20,20,.5)" }} onClick={() => setForm(null)}>
+          <div className="sheet w-full rounded-t-3xl bg-white sm:max-w-md sm:rounded-3xl" style={{ maxHeight: "92vh", boxShadow: "0 -10px 40px rgba(0,0,0,.2)" }} onClick={(e) => e.stopPropagation()}>
+            <div className="sc max-h-[92vh] overflow-y-auto p-6">
+              <div className="flex items-center justify-between"><h3 className="text-lg font-extrabold">{form.id ? "예약 수정" : "회의실 예약"}</h3><button onClick={() => setForm(null)} className="grid h-8 w-8 place-items-center rounded-lg" style={{ color: C.faint }}><X size={18} /></button></div>
+              <div className="mt-5 space-y-4">
+                <Field label="회의 제목" error={errs.title}>
+                  <input value={form.title} onChange={(e) => { setForm({ ...form, title: e.target.value }); setErrs((x) => ({ ...x, title: undefined })); }} placeholder="예: 제품팀 스프린트 플래닝" className="inp w-full rounded-xl border px-3.5 py-2.5 text-sm outline-none" style={{ borderColor: errs.title ? "#C0392B" : C.border }} />
+                </Field>
+                <Field label="회의실"><SelectBox value={form.roomId} onChange={(v) => setForm({ ...form, roomId: v })} options={ROOMS.map((r) => [r.id, `${r.name} · ${r.capacity}명`])} /></Field>
+                <Field label="시간" error={errs.time}>
+                  <div className="grid grid-cols-2 gap-3">
+                    <SelectBox value={form.start} onChange={(v) => { setForm({ ...form, start: v, end: toMin(form.end) <= toMin(v) ? toHHMM(Math.min(toMin(v) + 30, DAY_END)) : form.end }); setErrs((x) => ({ ...x, time: undefined })); }} options={TIMES.slice(0, -1).map((t) => [t, ampm(t)])} error={errs.time} />
+                    <SelectBox value={form.end} onChange={(v) => { setForm({ ...form, end: v }); setErrs((x) => ({ ...x, time: undefined })); }} options={TIMES.filter((t) => toMin(t) > toMin(form.start)).map((t) => [t, ampm(t)])} error={errs.time} />
+                  </div>
+                </Field>
+
+                <Field label="색상">
+                  <div className="flex items-center gap-2.5">
+                    {COLORS.map((c) => { const on = form.color === c; return (
+                      <button key={c} onClick={() => setForm({ ...form, color: c })} className="grid h-8 w-8 place-items-center rounded-full transition-transform" title={c} style={{ background: PASTEL[c].bg, border: `1.5px solid ${PASTEL[c].line}`, boxShadow: on ? `0 0 0 2px #fff, 0 0 0 3.5px ${C.ink}` : "none", transform: on ? "scale(1.06)" : "none" }}><span className="h-3 w-3 rounded-full" style={{ background: PASTEL[c].dot }} /></button>
+                    ); })}
+                  </div>
+                </Field>
+
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <span className="text-xs font-bold" style={{ color: C.muted }}>참석자 <span style={{ color: C.ink }}>· 참석 인원 {form.attendees.length}명</span></span>
+                  </div>
+                  <div className="rounded-xl border px-3 py-2.5 text-sm" style={{ borderColor: errs.att ? "#C0392B" : C.border, background: "#FAFAF6", minHeight: 46, color: form.attendees.length ? C.text : C.faint }}>
+                    {form.attendees.length ? form.attendees.map(memLabel).join(", ") : "선택된 참석자가 없어요"}
+                  </div>
+                  {errs.att && <div className="mt-1.5 flex items-center gap-1 text-xs font-semibold" style={{ color: "#C0392B" }}><AlertCircle size={12} />{errs.att}</div>}
+                  <button onClick={openPicker} className="lift mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border py-2.5 text-sm font-extrabold" style={{ borderColor: C.ink, color: C.ink }}><UserPlus size={16} /> 참석자 선택</button>
+                </div>
+
+                <button onClick={() => setForm({ ...form, repeat: !form.repeat })} className="lift flex w-full items-center justify-between rounded-xl border px-3.5 py-3" style={{ borderColor: C.border }}>
+                  <span className="flex items-center gap-2 text-sm font-semibold"><Repeat size={15} style={{ color: C.ink }} />매주 반복 예약</span>
+                  <span className="relative h-6 w-11 rounded-full transition-colors" style={{ background: form.repeat ? C.ink : "#D7D5CC" }}><span className="absolute top-0.5 h-5 w-5 rounded-full transition-all" style={{ left: form.repeat ? 22 : 2, background: form.repeat ? C.yellow : "#fff" }} /></span>
+                </button>
+              </div>
+              <div className="mt-6 flex gap-2.5">
+                {form.id && <button onClick={() => cancelRes(form.id)} className="lift rounded-xl px-4 py-3 text-sm font-bold" style={{ background: "#FBE7E7", color: "#C0392B" }}><Trash2 size={15} /></button>}
+                <button onClick={() => setForm(null)} className="lift flex-1 rounded-xl border py-3 text-sm font-bold" style={{ borderColor: C.border, color: C.muted }}>취소</button>
+                <button onClick={saveForm} className="lift flex flex-[2] items-center justify-center gap-1.5 rounded-xl py-3 text-sm font-extrabold" style={{ background: C.yellow, color: C.ink, boxShadow: "0 8px 18px rgba(232,190,0,.45)" }}><Check size={16} /> {form.id ? "수정 완료" : "예약하기"}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Attendee picker ===== */}
+      {pickerOpen && (
+        <div className="ov fixed inset-0 z-[60] flex items-end justify-center p-0 sm:items-center sm:p-4" style={{ background: "rgba(20,20,20,.5)" }} onClick={() => setPickerOpen(false)}>
+          <div className="sheet flex w-full flex-col rounded-t-3xl bg-white sm:max-w-2xl sm:rounded-3xl" style={{ maxHeight: "90vh", boxShadow: "0 -10px 40px rgba(0,0,0,.2)" }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex shrink-0 items-center justify-between border-b px-5 py-4" style={{ borderColor: C.border }}>
+              <div><h3 className="text-lg font-extrabold">참석자 선택</h3><p className="text-xs" style={{ color: C.faint }}>멤버를 끌어다 놓거나 눌러서 추가하세요</p></div>
+              <button onClick={() => setPickerOpen(false)} className="grid h-8 w-8 place-items-center rounded-lg" style={{ color: C.faint }}><X size={18} /></button>
+            </div>
+            <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
+              {/* dropzone (top on mobile / right on desktop) */}
+              <div className="order-1 flex shrink-0 flex-col border-b p-3 md:order-2 md:w-1/2 md:border-b-0 md:border-l" style={{ borderColor: C.border }}>
+                <div className="mb-2 px-1 text-xs font-extrabold" style={{ color: C.muted }}>참석자 ({temp.length})</div>
+                <div onDragOver={(e) => { e.preventDefault(); setDz(true); }} onDragLeave={() => setDz(false)} onDrop={(e) => { e.preventDefault(); addTemp(e.dataTransfer.getData("text/plain")); setDz(false); }}
+                  className="sc overflow-y-auto rounded-2xl border-2 border-dashed p-3" style={{ borderColor: dz ? C.ink : C.border, background: dz ? C.yellowSoft : "#FAFAF6", minHeight: 120, maxHeight: 220 }}>
+                  {temp.length === 0 ? (
+                    <div className="grid h-full place-items-center py-6 text-center"><div><UserPlus size={26} style={{ color: C.faint }} className="mx-auto" /><p className="mt-2 text-xs font-semibold" style={{ color: C.faint }}>여기로 멤버를 끌어다 놓으세요</p></div></div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {temp.map((id) => { const m = M(id); return (
+                        <span key={id} className="flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-bold" style={{ borderColor: C.border, background: "#fff" }}>
+                          <TeamTag team={m?.team} /><span>{m?.name}님</span>
+                          <button onClick={() => toggleTemp(id)} className="grid h-4 w-4 place-items-center rounded-full" style={{ background: "#EEEDE7" }}><X size={11} /></button>
+                        </span>
+                      ); })}
+                    </div>
+                  )}
+                </div>
+              </div>
+              {/* roster */}
+              <div className="sc order-2 flex-1 overflow-y-auto p-3 md:order-1">
+                {[["director", "디렉터"], ["staff", "임직원"]].map(([g, label]) => {
+                  const rows = MEMBERS.filter((m) => m.group === g);
+                  return (
+                    <div key={g} className="mb-2">
+                      <div className="px-1.5 py-1 text-xs font-extrabold" style={{ color: C.muted }}>{label} ({rows.length})</div>
+                      {rows.map((m) => { const on = temp.includes(m.id), me = m.id === getMeId(); return (
+                        <div key={m.id} draggable onDragStart={(e) => { e.dataTransfer.setData("text/plain", m.id); e.dataTransfer.effectAllowed = "copy"; }} onClick={() => toggleTemp(m.id)}
+                          className="mrow mb-1 flex items-center gap-2.5 rounded-xl border px-2.5 py-2" style={{ borderColor: on ? C.ink : "transparent", background: on ? C.yellowSoft : "transparent" }}>
+                          <GripVertical size={14} style={{ color: C.faint }} className="hidden sm:block" />
+                          <Avatar label={m.name.slice(0, 1)} size={32} />
+                          <div className="min-w-0 flex-1"><div className="flex items-center gap-1.5"><TeamTag team={m.team} /><span className="truncate text-sm font-bold">{m.name}님{me ? " (나)" : ""}</span></div><div className="text-[11px]" style={{ color: C.faint }}>{m.role}</div></div>
+                          <span className="grid h-5 w-5 shrink-0 place-items-center rounded-md border" style={on ? { background: C.ink, borderColor: C.ink } : { borderColor: C.border }}>{on && <Check size={13} color={C.yellow} />}</span>
+                        </div>
+                      ); })}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center justify-between gap-2.5 border-t px-5 py-4" style={{ borderColor: C.border }}>
+              <button onClick={() => setTemp([])} className="text-xs font-bold" style={{ color: C.muted }}>전체 비우기</button>
+              <div className="flex gap-2.5">
+                <button onClick={() => setPickerOpen(false)} className="lift rounded-xl border px-5 py-2.5 text-sm font-bold" style={{ borderColor: C.border, color: C.muted }}>취소</button>
+                <button onClick={donePicker} className="lift flex items-center gap-1.5 rounded-xl px-6 py-2.5 text-sm font-extrabold" style={{ background: C.yellow, color: C.ink, boxShadow: "0 8px 18px rgba(232,190,0,.45)" }}><Check size={16} />완료 ({temp.length})</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Detail ===== */}
+      {detail && (
+        <div className="ov fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4" style={{ background: "rgba(20,20,20,.5)" }} onClick={() => setDetail(null)}>
+          <div className="sheet w-full rounded-t-3xl bg-white p-6 sm:max-w-sm sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ background: pal(detail.color).dot }} /><h3 className="text-lg font-extrabold">{detail.title}</h3></div>
+            <div className="mt-4 space-y-2.5 text-sm" style={{ color: C.muted }}>
+              <Row icon={Building2} text={ROOMS.find((r) => r.id === detail.roomId).name} />
+              <Row icon={Clock} text={`${detail.start} ~ ${detail.end}`} />
+              <Row icon={User} text={`예약자 ${detail.owner}님`} />
+              <Row icon={Users} text={`참석 ${detail.attendees.length}명`} />
+            </div>
+            <div className="mt-2 rounded-xl border px-3 py-2.5 text-xs font-medium" style={{ borderColor: C.border, background: "#FAFAF6", color: C.text }}>{detail.attendees.map(memLabel).join(", ") || "참석자 정보 없음"}</div>
+            {isMine(detail) ? (
+              <div className="mt-4 flex gap-2.5">
+                <button onClick={() => { const d = detail; setDetail(null); setRoomId(d.roomId); openEdit(d); setSection("book"); }} className="lift flex-1 rounded-xl border py-3 text-sm font-bold" style={{ borderColor: C.ink, color: C.ink }}>수정</button>
+                <button onClick={() => cancelRes(detail.id)} className="lift flex-1 rounded-xl py-3 text-sm font-bold" style={{ background: "#FBE7E7", color: "#C0392B" }}>삭제</button>
+              </div>
+            ) : (
+              <button onClick={() => setDetail(null)} className="lift mt-4 w-full rounded-xl border py-3 text-sm font-bold" style={{ borderColor: C.border, color: C.muted }}>닫기</button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ===== Login modal ===== */}
+      {authOpen && <LoginModal message={authMsg} onClose={() => { setAuthOpen(false); setAuthPending(null); }} onLogin={doLogin} />}
+
+      {/* ===== Toast ===== */}
+      {toast && <div className="tdrop fixed left-1/2 top-5 z-[80] flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold" style={{ background: C.ink, color: "#fff", boxShadow: "0 10px 30px rgba(0,0,0,.3)" }}><CheckCircle2 size={16} style={{ color: C.yellow }} /> {toast}</div>}
+    </div>
+  );
+}
+
+/* ===================== helpers ===================== */
+function Field({ label, error, children }) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-xs font-bold" style={{ color: C.muted }}>{label}</span>
+      {children}
+      {error && <span className="mt-1.5 flex items-center gap-1 text-xs font-semibold" style={{ color: "#C0392B" }}><AlertCircle size={12} />{error}</span>}
+    </label>
+  );
+}
+function SelectBox({ value, onChange, options, error }) {
+  return (
+    <div className="relative">
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="inp w-full rounded-xl border px-3.5 py-2.5 pr-9 text-sm outline-none" style={{ borderColor: error ? "#C0392B" : C.border, background: "#fff" }}>{options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
+      <ChevronRight size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rotate-90" style={{ color: C.faint }} />
+    </div>
+  );
+}
+function Row({ icon: Icon, text }) { return <div className="flex items-center gap-2"><Icon size={15} style={{ color: C.faint }} /><span className="font-medium" style={{ color: C.text }}>{text}</span></div>; }
