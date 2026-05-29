@@ -115,27 +115,59 @@ function LoginModal({ message, onClose, onLogin }) {
 
 /* ===================== dashboard ===================== */
 function lcg(seed) { let s = seed % 2147483647; if (s <= 0) s += 2147483646; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
-function genDash(year, month, roomFilter) {
+function genDash(year, month, roomFilter, reservations) {
   const days = new Date(year, month + 1, 0).getDate();
-  const r = lcg((year * 100 + month + 1) * 13 + 7);
-  const daily = []; let big = 0, small = 0;
+  const daily = [];
+  let big = 0, small = 0;
+  
   for (let d = 1; d <= days; d++) {
-    const wd = new Date(year, month, d).getDay();
-    const weekend = wd === 0 || wd === 6;
-    const peak = d <= 6 ? 1.7 : 1;
-    let b = roomFilter === "small" ? 0 : (weekend ? 0 : Math.round((r() * 4 + 1) * peak));
-    let s = roomFilter === "big" ? 0 : (weekend ? 0 : Math.round((r() * 3 + 1) * peak));
-    daily.push({ d, wd, big: b, small: s, total: b + s });
-    big += b; small += s;
+    daily.push({ d, wd: new Date(year, month, d).getDay(), big: 0, small: 0, total: 0 });
   }
-  const total = big + small;
-  const totalHours = Math.round(total * 0.92);
-  const mostUsed = big >= small ? "큰 회의실" : "작은 회의실";
-  const leastUsed = big >= small ? "작은 회의실" : "큰 회의실";
+
+  if (Array.isArray(reservations)) {
+    reservations.forEach(r => {
+      const [ry, rm, rd] = r.date.split("-").map(Number);
+      if (ry === year && rm === month + 1) {
+        if (roomFilter === "all" || r.roomId === roomFilter) {
+          const dObj = daily[rd - 1];
+          if (dObj) {
+            const durationMin = toMin(r.end) - toMin(r.start);
+            const durationHours = durationMin / 60;
+            if (r.roomId === "big") {
+              dObj.big += 1;
+              big += durationHours;
+            } else if (r.roomId === "small") {
+              dObj.small += 1;
+              small += durationHours;
+            }
+            dObj.total += 1;
+          }
+        }
+      }
+    });
+  }
+
+  const total = daily.reduce((acc, curr) => acc + curr.total, 0);
+  const totalHours = Math.round(big + small);
+  const mostUsed = big > small ? "큰 회의실" : small > big ? "작은 회의실" : "-";
+  const leastUsed = big > small ? "작은 회의실" : small > big ? "큰 회의실" : "-";
   const noShowRate = 0;
   const savedByEnd = 0;
   const savedByNoShow = 0;
-  return { days, daily, total, totalHours, mostUsed, leastUsed, mostHours: Math.round(Math.max(big, small) * 0.92), leastHours: Math.round(Math.min(big, small) * 0.92), noShowRate, savedByEnd, savedByNoShow };
+  
+  return { 
+    days, 
+    daily, 
+    total, 
+    totalHours, 
+    mostUsed, 
+    leastUsed, 
+    mostHours: Math.round(big), 
+    leastHours: Math.round(small), 
+    noShowRate, 
+    savedByEnd, 
+    savedByNoShow 
+  };
 }
 const HEAT = ["#EFEEE9", "#FFF1B8", "#FFE271", "#FFD21F", "#E8BE00"];
 function heatColor(v, max) { if (!v) return HEAT[0]; const lv = Math.min(4, 1 + Math.floor((v / Math.max(1, max)) * 3.99)); return HEAT[lv]; }
@@ -150,8 +182,8 @@ function StatCard({ label, value, sub, delay }) {
   );
 }
 
-function Dashboard({ month, setMonth, roomF, setRoomF, now }) {
-  const data = useMemo(() => genDash(month.getFullYear(), month.getMonth(), roomF), [month, roomF]);
+function Dashboard({ month, setMonth, roomF, setRoomF, now, reservations }) {
+  const data = useMemo(() => genDash(month.getFullYear(), month.getMonth(), roomF, reservations), [month, roomF, reservations]);
   const maxTotal = Math.max(1, ...data.daily.map((x) => x.total));
   // heatmap grid
   const first = new Date(month.getFullYear(), month.getMonth(), 1);
@@ -520,7 +552,7 @@ export default function App() {
           </section>
         )}
 
-        {section === "dash" && <Dashboard month={dashMonth} setMonth={setDashMonth} roomF={dashRoom} setRoomF={setDashRoom} now={now} />}
+        {section === "dash" && <Dashboard month={dashMonth} setMonth={setDashMonth} roomF={dashRoom} setRoomF={setDashRoom} now={now} reservations={reservations} />}
       </main>
 
       {/* ===== mobile bottom nav ===== */}
