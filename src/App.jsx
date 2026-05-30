@@ -3,25 +3,25 @@ import {
   Calendar, CalendarDays, Clock, Users, Monitor, Video, Plus, X, Check,
   CheckCircle2, Repeat, AlertCircle, ChevronLeft, ChevronRight, Trash2,
   Building2, List, LogOut, Lock, User, UserPlus, GripVertical, LogIn,
-  LayoutDashboard, HelpCircle,
+  LayoutDashboard, HelpCircle, Sun, Moon,
 } from "lucide-react";
 
 /* ===================== design tokens ===================== */
 const C = {
-  ink: "#37352f", paper: "#ffffff", bg: "#ffffff",
-  yellow: "#e9e9e7", yellowDeep: "#d3d3d1", yellowSoft: "rgba(55, 53, 47, 0.08)",
-  border: "#e9e9e7", line: "#e9e9e7", text: "#37352f", muted: "#787774", faint: "#9b9a97",
+  ink: "var(--ink)", paper: "var(--paper)", bg: "var(--bg)",
+  yellow: "var(--yellow)", yellowDeep: "var(--yellow-deep)", yellowSoft: "var(--yellow-soft)",
+  border: "var(--border)", line: "var(--line)", text: "var(--text)", muted: "var(--muted)", faint: "var(--faint)",
 };
 const PASTEL = {
-  gray:   { bg: "#F1F1EF", text: "#787774", dot: "#D4D4D2", line: "#E9E9E7" },
-  brown:  { bg: "#F4EEEE", text: "#976D57", dot: "#D8BCAE", line: "#EBE3E0" },
-  orange: { bg: "#F8ECDF", text: "#CC772F", dot: "#F0B884", line: "#EEDAC7" },
-  yellow: { bg: "#FBF3DB", text: "#C29243", dot: "#E8C88B", line: "#F0E1C5" },
-  green:  { bg: "#EDF3EC", text: "#548064", dot: "#A2C4AE", line: "#DCE5DB" },
-  blue:   { bg: "#E7F3F8", text: "#337EA9", dot: "#91C3E2", line: "#D3E4EC" },
-  purple: { bg: "#F4F0F7", text: "#9065B0", dot: "#C5AADE", line: "#E6DCEE" },
-  pink:   { bg: "#F9EBED", text: "#C14C8A", dot: "#EAA6C7", line: "#EAD6D9" },
-  red:    { bg: "#FDEBEC", text: "#D44C47", dot: "#F09A96", line: "#F2D8D9" },
+  gray:   { bg: "var(--pastel-gray-bg)", text: "var(--pastel-gray-text)", dot: "var(--pastel-gray-dot)", line: "var(--pastel-gray-line)" },
+  brown:  { bg: "var(--pastel-brown-bg)", text: "var(--pastel-brown-text)", dot: "var(--pastel-brown-dot)", line: "var(--pastel-brown-line)" },
+  orange: { bg: "var(--pastel-orange-bg)", text: "var(--pastel-orange-text)", dot: "var(--pastel-orange-dot)", line: "var(--pastel-orange-line)" },
+  yellow: { bg: "var(--pastel-yellow-bg)", text: "var(--pastel-yellow-text)", dot: "var(--pastel-yellow-dot)", line: "var(--pastel-yellow-line)" },
+  green:  { bg: "var(--pastel-green-bg)", text: "var(--pastel-green-text)", dot: "var(--pastel-green-dot)", line: "var(--pastel-green-line)" },
+  blue:   { bg: "var(--pastel-blue-bg)", text: "var(--pastel-blue-text)", dot: "var(--pastel-blue-dot)", line: "var(--pastel-blue-line)" },
+  purple: { bg: "var(--pastel-purple-bg)", text: "var(--pastel-purple-text)", dot: "var(--pastel-purple-dot)", line: "var(--pastel-purple-line)" },
+  pink:   { bg: "var(--pastel-pink-bg)", text: "var(--pastel-pink-text)", dot: "var(--pastel-pink-dot)", line: "var(--pastel-pink-line)" },
+  red:    { bg: "var(--pastel-red-bg)", text: "var(--pastel-red-text)", dot: "var(--pastel-red-dot)", line: "var(--pastel-red-line)" },
 };
 const COLORS = ["gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red"];
 const pal = (c) => PASTEL[c] || PASTEL.yellow;
@@ -54,7 +54,7 @@ const M = (id) => MEMBERS.find((x) => x.id === id);
 const memLabel = (id) => { const m = M(id); return m ? `${m.team} ${m.name}님` : id; };
 
 /* timeline geometry */
-const DAY_START = 9 * 60, DAY_END = 22 * 60, STEP = 30, PX = 30;
+const DAY_START = 9 * 60, DAY_END = 22 * 60, STEP = 10, PX = 30;
 const SLOTS = (DAY_END - DAY_START) / STEP, GUTTER = 48;
 
 /* helpers */
@@ -78,7 +78,7 @@ function TeamTag({ team }) {
 }
 function EquipChip({ type }) {
   const e = EQUIP[type]; if (!e) return null; const { Icon } = e;
-  return <span className="inline-flex items-center gap-1 rounded-lg px-1.5 py-0.5 text-[11px] font-medium" style={{ background: "#F0EFEA", color: C.muted }}><Icon size={12} /> {e.label}</span>;
+  return <span className="inline-flex items-center gap-1 rounded-lg px-1.5 py-0.5 text-[11px] font-medium" style={{ background: "var(--bg-chip)", color: C.muted }}><Icon size={12} /> {e.label}</span>;
 }
 function StatusPill({ kind, text }) {
   const m = { busy: { bg: PASTEL.red.bg, fg: PASTEL.red.text, dot: PASTEL.red.dot }, soon: { bg: PASTEL.gray.bg, fg: PASTEL.gray.text, dot: PASTEL.gray.dot }, free: { bg: PASTEL.green.bg, fg: PASTEL.green.text, dot: PASTEL.green.dot } }[kind];
@@ -88,7 +88,7 @@ function Wordmark({ size = 18 }) {
   return <span className="tracking-tight" style={{ fontSize: size, color: C.ink, lineHeight: 1 }}><span style={{ fontWeight: 500, color: C.text }}>found</span><span style={{ fontWeight: 600 }}>founded</span></span>;
 }
 function Avatar({ label, size = 36, solid = false }) {
-  return <span className="grid shrink-0 place-items-center rounded-full font-medium" style={{ width: size, height: size, fontSize: size * 0.36, background: solid ? "#EAEBE6" : "#fff", border: `1px solid ${C.border}`, color: C.muted }}>{label}</span>;
+  return <span className="grid shrink-0 place-items-center rounded-full font-medium" style={{ width: size, height: size, fontSize: size * 0.36, background: solid ? "var(--bg-avatar)" : "var(--bg-input)", border: `1px solid ${C.border}`, color: C.muted }}>{label}</span>;
 }
 
 /* ===================== login modal ===================== */
@@ -110,7 +110,7 @@ function LoginModal({ message, onClose, onLogin }) {
           <input type="password" className="inp w-full bg-transparent py-2.5 text-sm outline-none" value={pw} onChange={(e) => { setPw(e.target.value); setErr(""); }} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="비밀번호" />
         </div>
         {err && <div className="mt-3 flex items-center gap-1.5 text-xs font-semibold" style={{ color: PASTEL.red.text }}><AlertCircle size={13} />{err}</div>}
-        <button onClick={submit} className="lift mt-5 flex w-full items-center justify-center gap-1.5 rounded-lg py-3 text-sm font-medium" style={{ background: C.ink, color: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.05)" }}><LogIn size={16} /> 로그인</button>
+        <button onClick={submit} className="lift mt-5 flex w-full items-center justify-center gap-1.5 rounded-lg py-3 text-sm font-medium" style={{ background: C.ink, color: "var(--bg)", boxShadow: "0 1px 2px rgba(0,0,0,.05)" }}><LogIn size={16} /> 로그인</button>
       </div>
     </div>
   );
@@ -172,7 +172,7 @@ function genDash(year, month, roomFilter, reservations) {
     savedByNoShow 
   };
 }
-const HEAT = ["#EFEEE9", "#FFF1B8", "#FFE271", "#FFD21F", "#E8BE00"];
+const HEAT = ["var(--heat-0)", "var(--heat-1)", "var(--heat-2)", "var(--heat-3)", "var(--heat-4)"];
 function heatColor(v, max) { if (!v) return HEAT[0]; const lv = Math.min(4, 1 + Math.floor((v / Math.max(1, max)) * 3.99)); return HEAT[lv]; }
 
 function StatCard({ label, value, sub, delay }) {
@@ -211,7 +211,7 @@ function Dashboard({ month, setMonth, roomF, setRoomF, now, reservations }) {
           </div>
           <div className="inline-flex rounded-lg border bg-white p-1" style={{ borderColor: C.border }}>
             {[["all", "전체"], ["big", "큰 회의실"], ["small", "작은 회의실"]].map(([k, l]) => (
-              <button key={k} onClick={() => setRoomF(k)} className="rounded-lg px-3 py-1.5 text-xs font-medium" style={roomF === k ? { background: C.ink, color: "#fff" } : { color: C.muted }}>{l}</button>
+              <button key={k} onClick={() => setRoomF(k)} className="rounded-lg px-3 py-1.5 text-xs font-medium" style={roomF === k ? { background: C.ink, color: "var(--bg)" } : { color: C.muted }}>{l}</button>
             ))}
           </div>
         </div>
@@ -257,7 +257,7 @@ function Dashboard({ month, setMonth, roomF, setRoomF, now, reservations }) {
               <span className="text-sm font-medium">일별 회의 현황</span>
             </div>
             <div className="flex items-center gap-3 text-[11px] font-semibold" style={{ color: C.muted }}>
-              <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "#44423B" }} />큰</span>
+              <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--ink-deep)" }} />큰</span>
               <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: C.inkDeep }} />작은</span>
             </div>
           </div>
@@ -271,7 +271,7 @@ function Dashboard({ month, setMonth, roomF, setRoomF, now, reservations }) {
                 return (
                   <g key={i}>
                     <rect x={xx} y={baseY - sH} width={barW} height={sH} fill={C.yellowDeep} rx="2" />
-                    <rect x={xx} y={baseY - sH - bH} width={barW} height={bH} fill="#44423B" rx="2" />
+                    <rect x={xx} y={baseY - sH - bH} width={barW} height={bH} fill="var(--ink-deep)" rx="2" />
                     {(x.d % 5 === 1) && <text x={xx + barW / 2} y={chartH - 6} fontSize="9" fill={C.faint} textAnchor="middle">{x.d}</text>}
                   </g>
                 );
@@ -291,6 +291,18 @@ export default function App() {
   const userRef = useRef(null); userRef.current = user;
   const [now, setNow] = useState(() => new Date());
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 20000); return () => clearInterval(t); }, []);
+
+  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
+  useEffect(() => {
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+      document.documentElement.setAttribute("data-theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      document.documentElement.setAttribute("data-theme", "light");
+    }
+    localStorage.setItem("theme", theme);
+  }, [theme]);
 
   const [section, setSection] = useState("book");
   const [view, setView] = useState("calendar");
@@ -343,7 +355,7 @@ export default function App() {
     const a = toMin(s), b = toMin(e);
     return reservations.some((r) => r.roomId === rid && r.date === date && r.id !== ignore && !(b <= toMin(r.start) || a >= toMin(r.end)));
   }
-  const defStart = () => Math.min(Math.max(isToday ? Math.ceil(nowMin / 30) * 30 : 10 * 60, DAY_START), DAY_END - 60);
+  const defStart = () => Math.min(Math.max(isToday ? Math.ceil(nowMin / STEP) * STEP : 10 * 60, DAY_START), DAY_END - 60);
   function openCreate(rid, startMin, date) { setErrs({}); const me = getMeId(); setForm({ id: null, roomId: rid, title: "", date: date || selKey, start: toHHMM(startMin), end: toHHMM(Math.min(startMin + 60, DAY_END)), attendees: me ? [me] : [], repeat: false, color: "yellow" }); }
   const tryCreate = (rid, sm, date) => requireAuth(() => openCreate(rid, sm, date), "일정을 추가하려면 로그인이 필요해요.");
   const openEdit = (r) => { setErrs({}); setForm({ ...r, attendees: [...r.attendees] }); };
@@ -373,14 +385,19 @@ export default function App() {
   /* ----- timeline renderers ----- */
   const Gutter = () => (
     <div className="relative shrink-0" style={{ width: GUTTER, height: SLOTS * PX }}>
-      {Array.from({ length: (DAY_END - DAY_START) / 60 + 1 }, (_, i) => <div key={i} className="absolute -translate-y-1/2 text-[11px] font-semibold" style={{ top: i * 2 * PX, color: C.faint }}>{pad(9 + i)}</div>)}
+      {Array.from({ length: (DAY_END - DAY_START) / 60 + 1 }, (_, i) => <div key={i} className="absolute -translate-y-1/2 text-[11px] font-semibold" style={{ top: i * (60 / STEP) * PX, color: C.faint }}>{pad(Math.floor(DAY_START / 60) + i)}</div>)}
     </div>
   );
   const Track = ({ rid }) => {
     const list = reservations.filter((r) => r.roomId === rid && r.date === selKey).sort((a, b) => toMin(a.start) - toMin(b.start));
     return (
       <div className="relative w-full" style={{ height: SLOTS * PX }}>
-        {Array.from({ length: SLOTS }, (_, i) => { const sm = DAY_START + i * STEP; return <div key={i} className="slot absolute left-0 right-0 border-t" style={{ top: i * PX, height: PX, borderColor: i % 2 ? "#F4F3EE" : "#EAE9E2" }} onClick={() => tryCreate(rid, sm)} />; })}
+        {Array.from({ length: SLOTS }, (_, i) => {
+          const sm = DAY_START + i * STEP;
+          const isHour = sm % 60 === 0;
+          const isHalf = sm % 30 === 0;
+          return <div key={i} className="slot absolute left-0 right-0 border-t" style={{ top: i * PX, height: PX, borderColor: isHour ? "var(--border-calendar)" : isHalf ? "var(--border-calendar-half)" : "rgba(234, 233, 226, 0.25)" }} onClick={() => tryCreate(rid, sm)} />;
+        })}
         {list.map((r) => {
           const top = ((toMin(r.start) - DAY_START) / STEP) * PX, h = ((toMin(r.end) - toMin(r.start)) / STEP) * PX, p = pal(r.color), mine = isMine(r);
           return (
@@ -407,39 +424,47 @@ export default function App() {
     <div style={{ background: C.bg, color: C.text, minHeight: "100vh" }} className="w-full flex flex-col">
       <style>{`
         *{font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";box-sizing:border-box;}
-        .lift{transition:background .1s ease;} .lift:hover{background:rgba(55, 53, 47, 0.08);} .lift:active{background:rgba(55, 53, 47, 0.12);}
+        .lift{transition:background .1s ease;} .lift:hover{background:var(--lift-hover);} .lift:active{background:var(--lift-active);}
         .inp{transition:border-color .15s ease, box-shadow .15s ease;} .inp:focus{border-color:${C.ink};}
-        .slot{transition:background .12s ease;cursor:pointer;} .slot:hover{background:rgba(55, 53, 47, 0.04);}
+        .slot{transition:background .12s ease;cursor:pointer;} .slot:hover{background:var(--slot-hover);}
         .slot:hover::after{content:'+ 예약';position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:11px;font-weight:600;color:${C.muted};}
         .blk{transition:background .1s ease;cursor:pointer;} .blk:hover{filter: brightness(0.95);}
-        .cell{transition:background .1s ease;cursor:pointer;} .cell:hover{background:rgba(55, 53, 47, 0.04);}
+        .cell{transition:background .1s ease;cursor:pointer;} .cell:hover{background:var(--slot-hover);}
         .mrow{cursor:grab;transition:background .1s ease;} .mrow:active{cursor:grabbing;}
         .fade{animation:fade .15s ease both;} @keyframes fade{from{opacity:0;}to{opacity:1;}}
         .sheet{animation:sheet .15s ease both;} @keyframes sheet{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
         .ov{animation:ov .15s ease both;} @keyframes ov{from{opacity:0;}to{opacity:1;}}
         .rise{animation:rise .2s ease both;} @keyframes rise{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
         .tdrop{animation:tdrop .15s ease both;} @keyframes tdrop{from{opacity:0;}to{opacity:1;}}
-        .sc::-webkit-scrollbar{width:6px;height:6px;} .sc::-webkit-scrollbar-thumb{background:#E9E9E7;border-radius:4px;}
+        .sc::-webkit-scrollbar{width:6px;height:6px;} .sc::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
         input,select,button{font-family:inherit;} select{appearance:none;-webkit-appearance:none;}`}</style>
 
       {/* ===== Header ===== */}
-      <header className="sticky top-0 z-30 border-b" style={{ background: "rgba(255,255,255,.82)", borderColor: C.border, backdropFilter: "blur(10px)" }}>
+      <header className="sticky top-0 z-30 border-b" style={{ background: "var(--bg-header)", borderColor: C.border, backdropFilter: "blur(10px)" }}>
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-5">
           <button onClick={() => setSection("book")} className="flex items-center"><Wordmark size={19} /></button>
-          <nav className="hidden items-center gap-1 rounded-lg p-1 md:flex" style={{ background: "#ECEBE4" }}>
+          <nav className="hidden items-center gap-1 rounded-lg p-1 md:flex" style={{ background: "var(--bg-quaternary)" }}>
             {NAV.map(([k, lbl, Icon]) => (
-              <button key={k} onClick={() => setSection(k)} className="lift flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-sm font-medium" style={section === k ? { background: C.ink, color: "#fff" } : { color: C.muted }}><Icon size={15} />{lbl}{k === "mine" && myRes.length ? ` · ${myRes.length}` : ""}</button>
+              <button key={k} onClick={() => setSection(k)} className="lift flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-sm font-medium" style={section === k ? { background: C.ink, color: "var(--bg)" } : { color: C.muted }}><Icon size={15} />{lbl}{k === "mine" && myRes.length ? ` · ${myRes.length}` : ""}</button>
             ))}
           </nav>
           <div className="flex items-center gap-2">
             <div className="hidden text-right leading-tight sm:block"><div className="text-[12px] font-medium">{fmtK(now)}</div><div className="text-[11px]" style={{ color: C.faint }}>{now.getHours() < 12 ? "오전" : "오후"} {pad(((now.getHours() + 11) % 12) + 1)}:{pad(now.getMinutes())}</div></div>
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="lift grid h-9 w-9 place-items-center rounded-lg border transition-all duration-200 active:scale-90"
+              style={{ borderColor: C.border, color: C.muted }}
+              title={theme === "dark" ? "라이트 모드" : "다크 모드"}
+            >
+              {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
             {user ? (
               <div className="flex items-center gap-2">
                 <Avatar label={user.slice(0, 2)} size={34} />
                 <button onClick={() => setUser(null)} title="로그아웃" className="lift grid h-9 w-9 place-items-center rounded-[4px] border" style={{ borderColor: C.border, color: C.muted }}><LogOut size={15} /></button>
               </div>
             ) : (
-              <button onClick={() => requireAuth(() => {}, "로그인")} className="lift flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium" style={{ background: C.ink, color: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.05)" }}><LogIn size={15} /> 로그인</button>
+              <button onClick={() => requireAuth(() => {}, "로그인")} className="lift flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium" style={{ background: C.ink, color: "var(--bg)", boxShadow: "0 1px 2px rgba(0,0,0,.05)" }}><LogIn size={15} /> 로그인</button>
             )}
           </div>
         </div>
@@ -452,16 +477,16 @@ export default function App() {
               <div className="flex items-center gap-2">
                 <div className="flex items-center rounded-lg border bg-white" style={{ borderColor: C.border }}>
                   <button onClick={() => view === "calendar" ? setAnchor(new Date(anchor.getFullYear(), anchor.getMonth() - 1, 1)) : setAnchor(addDays(anchor, -1))} className="lift grid h-9 w-9 place-items-center rounded-l-xl" style={{ color: C.muted }}><ChevronLeft size={18} /></button>
-                  <div className="flex items-center gap-2 px-2.5 text-sm font-medium sm:px-3">{view === "calendar" ? <CalendarDays size={15} style={{ color: "#fff" }} /> : <Calendar size={15} style={{ color: C.ink }} />}{view === "calendar" ? `${anchor.getFullYear()}년 ${anchor.getMonth() + 1}월` : fmtK(anchor)}</div>
+                  <div className="flex items-center gap-2 px-2.5 text-sm font-medium sm:px-3">{view === "calendar" ? <CalendarDays size={15} style={{ color: "var(--bg)" }} /> : <Calendar size={15} style={{ color: C.ink }} />}{view === "calendar" ? `${anchor.getFullYear()}년 ${anchor.getMonth() + 1}월` : fmtK(anchor)}</div>
                   <button onClick={() => view === "calendar" ? setAnchor(new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1)) : setAnchor(addDays(anchor, 1))} className="lift grid h-9 w-9 place-items-center rounded-r-xl" style={{ color: C.muted }}><ChevronRight size={18} /></button>
                 </div>
                 {(view === "calendar" ? isCurMonth : isToday)
-                  ? <span className="rounded-lg px-2.5 py-1 text-xs font-medium" style={{ background: C.ink, color: "#fff" }}>{view === "calendar" ? "이번 달" : "오늘"}</span>
-                  : <button onClick={() => setAnchor(today)} className="lift rounded-lg border px-3 py-2 text-xs font-medium" style={{ borderColor: C.border, background: "#fff", color: C.muted }}>오늘</button>}
+                  ? <span className="rounded-lg px-2.5 py-1 text-xs font-medium" style={{ background: C.ink, color: "var(--bg)" }}>{view === "calendar" ? "이번 달" : "오늘"}</span>
+                  : <button onClick={() => setAnchor(today)} className="lift rounded-lg border px-3 py-2 text-xs font-medium" style={{ borderColor: C.border, background: "var(--bg-input)", color: C.muted }}>오늘</button>}
               </div>
               <div className="inline-flex rounded-lg border bg-white p-1" style={{ borderColor: C.border }}>
                 {[["calendar", "캘린더", CalendarDays], ["timeline", "타임라인", List]].map(([k, lbl, Icon]) => (
-                  <button key={k} onClick={() => setView(k)} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium" style={view === k ? { background: C.ink, color: "#fff" } : { color: C.muted }}><Icon size={15} /><span className="hidden sm:inline">{lbl}</span></button>
+                  <button key={k} onClick={() => setView(k)} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium" style={view === k ? { background: C.ink, color: "var(--bg)" } : { color: C.muted }}><Icon size={15} /><span className="hidden sm:inline">{lbl}</span></button>
                 ))}
               </div>
             </div>
@@ -470,14 +495,14 @@ export default function App() {
               <section className="rise rounded-lg border bg-white p-2.5 sm:p-4 flex-1 flex flex-col" style={{ borderColor: C.border, boxShadow: "0 1px 2px rgba(0,0,0,.04)" }}>
                 <div className="mb-2 hidden items-center justify-end px-1 text-xs font-medium sm:flex" style={{ color: C.faint }}>날짜를 누르면 해당 날짜로 이동 · 색상은 예약 시 직접 지정</div>
                 <div className="grid grid-cols-7 overflow-hidden rounded-lg border flex-1" style={{ borderColor: C.border, gridTemplateRows: "auto repeat(6, 1fr)" }}>
-                  {WEEK.map((w, i) => <div key={w} className="border-b py-2 text-center text-[11px] font-medium sm:text-xs" style={{ borderColor: C.border, background: "#FAFAF6", color: i === 0 ? "#C0392B" : i === 6 ? "#2A5DC7" : C.muted }}>{w}</div>)}
+                  {WEEK.map((w, i) => <div key={w} className="border-b py-2 text-center text-[11px] font-medium sm:text-xs" style={{ borderColor: C.border, background: "var(--bg-secondary)", color: i === 0 ? "#C0392B" : i === 6 ? "#2A5DC7" : C.muted }}>{w}</div>)}
                   {cells.map((cell, i) => {
                     const inMonth = cell.getMonth() === anchor.getMonth(), cToday = sameDay(cell, today);
                     const list = (byDate[keyOf(cell)] || []).slice().sort((a, b) => toMin(a.start) - toMin(b.start));
                     return (
-                      <div key={i} onClick={() => tryCreate(roomId, defStart(), keyOf(cell))} className="cell border-b border-l p-1 sm:p-1.5 flex flex-col" style={{ borderColor: C.border, background: cToday ? C.yellowSoft : inMonth ? "#fff" : "#FBFBF7", opacity: inMonth ? 1 : .5, minHeight: 0 }}>
+                      <div key={i} onClick={() => tryCreate(roomId, defStart(), keyOf(cell))} className="cell border-b border-l p-1 sm:p-1.5 flex flex-col" style={{ borderColor: C.border, background: cToday ? C.yellowSoft : inMonth ? "var(--bg-input)" : "var(--bg-tertiary)", opacity: inMonth ? 1 : .5, minHeight: 0 }}>
                         <div className="flex items-center justify-between">
-                          <span className={cToday ? "grid h-5 w-5 place-items-center rounded-lg text-[11px] font-medium" : "text-[12px] font-medium"} style={cToday ? { background: C.ink, color: "#fff" } : { color: cell.getDay() === 0 ? "#C0392B" : cell.getDay() === 6 ? "#2A5DC7" : C.text }}>{cell.getDate()}</span>
+                          <span className={cToday ? "grid h-5 w-5 place-items-center rounded-lg text-[11px] font-medium" : "text-[12px] font-medium"} style={cToday ? { background: C.ink, color: "var(--bg)" } : { color: cell.getDay() === 0 ? "#C0392B" : cell.getDay() === 6 ? "#2A5DC7" : C.text }}>{cell.getDate()}</span>
                           {list.length > 0 && <span className="hidden text-[10px] font-medium sm:inline" style={{ color: C.faint }}>{list.length}</span>}
                         </div>
                         {/* mobile: dots */}
@@ -502,7 +527,7 @@ export default function App() {
               <>
                 <div className="mb-4 flex flex-wrap items-center gap-2.5">
                   <div className="inline-flex rounded-lg border bg-white p-1" style={{ borderColor: C.border }}>
-                    {ROOMS.map((r) => { const on = roomId === r.id; return <button key={r.id} onClick={() => setRoomId(r.id)} className="rounded-lg px-3.5 py-1.5 text-sm font-medium sm:px-4" style={on ? { background: C.ink, color: "#fff" } : { color: C.muted }}>{r.name}</button>; })}
+                    {ROOMS.map((r) => { const on = roomId === r.id; return <button key={r.id} onClick={() => setRoomId(r.id)} className="rounded-lg px-3.5 py-1.5 text-sm font-medium sm:px-4" style={on ? { background: C.ink, color: "var(--bg)" } : { color: C.muted }}>{r.name}</button>; })}
                   </div>
                   <div className="flex items-center gap-2 text-xs" style={{ color: C.muted }}>
                     <span className="inline-flex items-center gap-1 font-medium"><Users size={13} />{room.capacity}명</span>
@@ -513,7 +538,7 @@ export default function App() {
                 <section className="rise rounded-lg border bg-white" style={{ borderColor: C.border, boxShadow: "0 1px 2px rgba(0,0,0,.04)" }}>
                   <div className="flex items-center justify-between border-b px-4 py-4 sm:px-5" style={{ borderColor: C.border }}>
                     <div><div className="text-[16px] font-medium">{room.name}</div><div className="mt-0.5 text-xs" style={{ color: C.muted }}>{fmtK(anchor)} · 09:00 – 22:00</div></div>
-                    <button onClick={() => tryCreate(roomId, defStart())} className="lift flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium" style={{ background: C.ink, color: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.05)" }}><Plus size={16} /> 새 예약</button>
+                    <button onClick={() => tryCreate(roomId, defStart())} className="lift flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium" style={{ background: C.ink, color: "var(--bg)", boxShadow: "0 1px 2px rgba(0,0,0,.05)" }}><Plus size={16} /> 새 예약</button>
                   </div>
                   <div className="sc overflow-y-auto px-4 py-4 sm:px-5 pb-8"><div className="flex"><Gutter /><div className="min-w-0 flex-1"><Track rid={roomId} /></div></div></div>
                 </section>
@@ -528,12 +553,12 @@ export default function App() {
             {!user ? (
               <div className="grid place-items-center rounded-lg border bg-white py-16 text-center" style={{ borderColor: C.border }}>
                 <Lock size={30} style={{ color: C.faint }} /><p className="mt-3 text-sm font-semibold" style={{ color: C.muted }}>로그인하면 내 예약을 볼 수 있어요</p>
-                <button onClick={() => requireAuth(() => setSection("mine"), "로그인하면 내 예약을 볼 수 있어요.")} className="lift mt-4 flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium" style={{ background: C.ink, color: "#fff" }}><LogIn size={15} />로그인</button>
+                <button onClick={() => requireAuth(() => setSection("mine"), "로그인하면 내 예약을 볼 수 있어요.")} className="lift mt-4 flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium" style={{ background: C.ink, color: "var(--bg)" }}><LogIn size={15} />로그인</button>
               </div>
             ) : myRes.length === 0 ? (
               <div className="grid place-items-center rounded-lg border bg-white py-16 text-center" style={{ borderColor: C.border }}>
                 <Calendar size={32} style={{ color: C.faint }} /><p className="mt-3 text-sm font-semibold" style={{ color: C.muted }}>아직 예약이 없어요</p>
-                <button onClick={() => setSection("book")} className="lift mt-4 rounded-lg px-4 py-2 text-sm font-medium" style={{ background: C.ink, color: "#fff" }}>예약하러 가기</button>
+                <button onClick={() => setSection("book")} className="lift mt-4 rounded-lg px-4 py-2 text-sm font-medium" style={{ background: C.ink, color: "var(--bg)" }}>예약하러 가기</button>
               </div>
             ) : (
               <div className="grid gap-3">
@@ -572,7 +597,7 @@ export default function App() {
 
       {/* ===== FAB (book section) ===== */}
       {section === "book" && (
-        <button onClick={() => tryCreate(roomId, defStart())} className="lift fixed right-5 z-30 flex h-14 w-14 items-center justify-center rounded-lg md:hidden" style={{ bottom: "calc(env(safe-area-inset-bottom) + 68px)", background: C.ink, color: "#fff", boxShadow: "0 4px 12px rgba(0,0,0,.15)" }}><Plus size={26} /></button>
+        <button onClick={() => tryCreate(roomId, defStart())} className="lift fixed right-5 z-30 flex h-14 w-14 items-center justify-center rounded-lg md:hidden" style={{ bottom: "calc(env(safe-area-inset-bottom) + 68px)", background: C.ink, color: "var(--bg)", boxShadow: "0 4px 12px rgba(0,0,0,.15)" }}><Plus size={26} /></button>
       )}
 
       {/* ===== Booking modal ===== */}
@@ -616,21 +641,21 @@ export default function App() {
                 <Field label="색상">
                   <div className="flex items-center gap-2.5">
                     {COLORS.map((c) => { const on = form.color === c; return (
-                      <button key={c} onClick={() => setForm({ ...form, color: c })} className="flex h-3.5 w-3.5 place-items-center justify-center rounded-full transition-transform" title={c} style={{ background: PASTEL[c].dot, boxShadow: on ? `0 0 0 2px #fff, 0 0 0 3px ${C.ink}` : "none", transform: on ? "scale(1.2)" : "none" }}></button>
+                      <button key={c} onClick={() => setForm({ ...form, color: c })} className="flex h-3.5 w-3.5 place-items-center justify-center rounded-full transition-transform" title={c} style={{ background: PASTEL[c].dot, boxShadow: on ? `0 0 0 2px var(--bg-input), 0 0 0 3px ${C.ink}` : "none", transform: on ? "scale(1.2)" : "none" }}></button>
                     ); })}
                   </div>
                 </Field>
 
                 <div>
                   <div className="mb-1.5 flex items-center justify-between">
-                    <span className="text-xs font-medium" style={{ color: C.muted }}>참석자 <span style={{ color: "#fff" }}>· 참석 인원 {form.attendees.length}명</span></span>
+                    <span className="text-xs font-medium" style={{ color: C.muted }}>참석자 <span style={{ color: "var(--faint)" }}>· 참석 인원 {form.attendees.length}명</span></span>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2.5" style={{ borderColor: errs.att ? "#C0392B" : C.border, background: "#FAFAF6", minHeight: 46 }}>
+                  <div className="flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2.5" style={{ borderColor: errs.att ? "#C0392B" : C.border, background: "var(--bg-secondary)", minHeight: 46 }}>
                     {form.attendees.length ? form.attendees.map((id) => {
                       const m = M(id);
                       if (!m) return null;
                       return (
-                        <span key={id} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px]" style={{ background: "#EAE9E5", color: C.text }}>
+                        <span key={id} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px]" style={{ background: "var(--bg-chip)", color: C.text }}>
                           <span className="h-2 w-2 rounded-full" style={{ background: C.muted }} />
                           <span><span className="font-bold">{m.team}</span> <span className="font-medium">{m.name}님</span></span>
                         </span>
@@ -664,15 +689,15 @@ export default function App() {
               <div className="order-1 flex shrink-0 flex-col border-b p-3 md:order-2 md:w-1/2 md:border-b-0 md:border-l" style={{ borderColor: C.border }}>
                 <div className="mb-2 px-1 text-xs font-medium" style={{ color: C.muted }}>참석자 ({temp.length})</div>
                 <div onDragOver={(e) => { e.preventDefault(); setDz(true); }} onDragLeave={() => setDz(false)} onDrop={(e) => { e.preventDefault(); addTemp(e.dataTransfer.getData("text/plain")); setDz(false); }}
-                  className="sc overflow-y-auto rounded-lg border-2 border-dashed p-3" style={{ borderColor: dz ? C.ink : C.border, background: dz ? C.yellowSoft : "#FAFAF6", minHeight: 120, maxHeight: 220 }}>
+                  className="sc overflow-y-auto rounded-lg border-2 border-dashed p-3" style={{ borderColor: dz ? C.ink : C.border, background: dz ? C.yellowSoft : "var(--bg-secondary)", minHeight: 120, maxHeight: 220 }}>
                   {temp.length === 0 ? (
                     <div className="grid h-full place-items-center py-6 text-center"><div><UserPlus size={26} style={{ color: C.faint }} className="mx-auto" /><p className="mt-2 text-xs font-semibold" style={{ color: C.faint }}>여기로 멤버를 끌어다 놓으세요</p></div></div>
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       {temp.map((id) => { const m = M(id); return (
-                        <span key={id} className="flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium" style={{ borderColor: C.border, background: "#fff" }}>
+                        <span key={id} className="flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium" style={{ borderColor: C.border, background: "var(--bg-input)" }}>
                           <TeamTag team={m?.team} /><span>{m?.name}님</span>
-                          <button onClick={() => toggleTemp(id)} className="grid h-4 w-4 place-items-center rounded-lg" style={{ background: "#EEEDE7" }}><X size={11} /></button>
+                          <button onClick={() => toggleTemp(id)} className="grid h-4 w-4 place-items-center rounded-lg" style={{ background: "var(--bg-chip)" }}><X size={11} /></button>
                         </span>
                       ); })}
                     </div>
@@ -704,7 +729,7 @@ export default function App() {
               <button onClick={() => setTemp([])} className="text-xs font-medium" style={{ color: C.muted }}>전체 비우기</button>
               <div className="flex gap-2.5">
                 <button onClick={() => setPickerOpen(false)} className="lift rounded-lg border px-5 py-2.5 text-sm font-medium" style={{ borderColor: C.border, color: C.muted }}>취소</button>
-                <button onClick={donePicker} className="lift flex items-center gap-1.5 rounded-lg px-6 py-2.5 text-sm font-medium" style={{ background: C.ink, color: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.05)" }}><Check size={16} />완료 ({temp.length})</button>
+                <button onClick={donePicker} className="lift flex items-center gap-1.5 rounded-lg px-6 py-2.5 text-sm font-medium" style={{ background: C.ink, color: "var(--bg)", boxShadow: "0 1px 2px rgba(0,0,0,.05)" }}><Check size={16} />완료 ({temp.length})</button>
               </div>
             </div>
           </div>
@@ -723,7 +748,7 @@ export default function App() {
             </div>
             {isMine(detail) ? (
               <div className="mt-4 flex gap-2.5">
-                <button onClick={() => { const d = detail; setDetail(null); setRoomId(d.roomId); openEdit(d); setSection("book"); }} className="lift flex-1 rounded-lg border py-3 text-sm font-medium" style={{ borderColor: C.ink, color: "#fff" }}>수정</button>
+                <button onClick={() => { const d = detail; setDetail(null); setRoomId(d.roomId); openEdit(d); setSection("book"); }} className="lift flex-1 rounded-lg border py-3 text-sm font-medium" style={{ background: C.ink, borderColor: C.ink, color: "var(--bg)" }}>수정</button>
                 <button onClick={() => cancelRes(detail.id)} className="lift flex-1 rounded-lg py-3 text-sm font-medium" style={{ background: PASTEL.red.bg, color: PASTEL.red.text }}>삭제</button>
               </div>
             ) : (
@@ -737,7 +762,7 @@ export default function App() {
       {authOpen && <LoginModal message={authMsg} onClose={() => { setAuthOpen(false); setAuthPending(null); }} onLogin={doLogin} />}
 
       {/* ===== Toast ===== */}
-      {toast && <div className="tdrop fixed left-1/2 top-5 z-[80] flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium" style={{ background: C.ink, color: "#fff", boxShadow: "0 4px 12px rgba(0,0,0,.15)" }}><CheckCircle2 size={16} style={{ color: C.yellow }} /> {toast}</div>}
+      {toast && <div className="tdrop fixed left-1/2 top-5 z-[80] flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium" style={{ background: C.ink, color: "var(--bg)", boxShadow: "0 4px 12px rgba(0,0,0,.15)" }}><CheckCircle2 size={16} style={{ color: "var(--yellow)" }} /> {toast}</div>}
     </div>
   );
 }
@@ -755,7 +780,7 @@ function Field({ label, error, children }) {
 function SelectBox({ value, onChange, options, error }) {
   return (
     <div className="relative">
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="inp w-full rounded-lg border px-3.5 py-2.5 pr-9 text-sm outline-none" style={{ borderColor: error ? "#C0392B" : C.border, background: "#fff" }}>{options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="inp w-full rounded-lg border px-3.5 py-2.5 pr-9 text-sm outline-none" style={{ borderColor: error ? "#C0392B" : C.border, background: "var(--bg-select)" }}>{options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
       <ChevronRight size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rotate-90" style={{ color: C.faint }} />
     </div>
   );

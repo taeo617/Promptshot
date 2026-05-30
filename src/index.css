@@ -1,6 +1,190 @@
-@import "tailwindcss";
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css");
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --bg: #ffffff;
+  --bg-header: rgba(255, 255, 255, 0.82);
+  --bg-secondary: #FAFAF6;
+  --bg-tertiary: #FBFBF7;
+  --bg-quaternary: #ECEBE4;
+  --bg-chip: #F0EFEA;
+  --bg-avatar: #EAEBE6;
+  --bg-input: #ffffff;
+  --bg-select: #ffffff;
+  
+  --text: #37352f;
+  --ink: #37352f;
+  --ink-deep: #44423B;
+  --border: #e9e9e7;
+  --border-calendar: #EAE9E2;
+  --border-calendar-half: #F4F3EE;
+  --line: #e9e9e7;
+  --yellow: #e9e9e7;
+  --yellow-deep: #d3d3d1;
+  --yellow-soft: rgba(55, 53, 47, 0.08);
+  --muted: #787774;
+  --faint: #9b9a97;
+  
+  --lift-hover: rgba(55, 53, 47, 0.08);
+  --lift-active: rgba(55, 53, 47, 0.12);
+  --slot-hover: rgba(55, 53, 47, 0.04);
+  
+  /* Pastel Colors */
+  --pastel-gray-bg: #F1F1EF;
+  --pastel-gray-text: #787774;
+  --pastel-gray-dot: #D4D4D2;
+  --pastel-gray-line: #E9E9E7;
+  
+  --pastel-brown-bg: #F4EEEE;
+  --pastel-brown-text: #976D57;
+  --pastel-brown-dot: #D8BCAE;
+  --pastel-brown-line: #EBE3E0;
+  
+  --pastel-orange-bg: #F8ECDF;
+  --pastel-orange-text: #CC772F;
+  --pastel-orange-dot: #F0B884;
+  --pastel-orange-line: #EEDAC7;
+  
+  --pastel-yellow-bg: #FBF3DB;
+  --pastel-yellow-text: #C29243;
+  --pastel-yellow-dot: #E8C88B;
+  --pastel-yellow-line: #F0E1C5;
+  
+  --pastel-green-bg: #EDF3EC;
+  --pastel-green-text: #548064;
+  --pastel-green-dot: #A2C4AE;
+  --pastel-green-line: #DCE5DB;
+  
+  --pastel-blue-bg: #E7F3F8;
+  --pastel-blue-text: #337EA9;
+  --pastel-blue-dot: #91C3E2;
+  --pastel-blue-line: #D3E4EC;
+  
+  --pastel-purple-bg: #F4F0F7;
+  --pastel-purple-text: #9065B0;
+  --pastel-purple-dot: #C5AADE;
+  --pastel-purple-line: #E6DCEE;
+  
+  --pastel-pink-bg: #F9EBED;
+  --pastel-pink-text: #C14C8A;
+  --pastel-pink-dot: #EAA6C7;
+  --pastel-pink-line: #EAD6D9;
+  
+  --pastel-red-bg: #FDEBEC;
+  --pastel-red-text: #D44C47;
+  --pastel-red-dot: #F09A96;
+  --pastel-red-line: #F2D8D9;
+  
+  /* Heatmap */
+  --heat-0: #EFEEE9;
+  --heat-1: #FFF1B8;
+  --heat-2: #FFE271;
+  --heat-3: #FFD21F;
+  --heat-4: #E8BE00;
+}
+
+.dark {
+  --bg: #121212;
+  --bg-header: rgba(18, 18, 18, 0.82);
+  --bg-secondary: #1a1a1a;
+  --bg-tertiary: #202020;
+  --bg-quaternary: #2a2a2a;
+  --bg-chip: #2a2a2a;
+  --bg-avatar: #333333;
+  --bg-input: #1e1e1e;
+  --bg-select: #1e1e1e;
+  
+  --text: #e3e3e2;
+  --ink: #ffffff;
+  --ink-deep: #e3e3e2;
+  --border: #2a2a2a;
+  --border-calendar: #2d2d2a;
+  --border-calendar-half: #252522;
+  --line: #2d2d2a;
+  --yellow: #ffd21f;
+  --yellow-deep: #b59500;
+  --yellow-soft: rgba(255, 210, 31, 0.15);
+  --muted: #a3a29e;
+  --faint: #6e6d6a;
+  
+  --lift-hover: rgba(255, 255, 255, 0.08);
+  --lift-active: rgba(255, 255, 255, 0.12);
+  --slot-hover: rgba(255, 255, 255, 0.04);
+  
+  /* Pastel Colors for Dark Mode */
+  --pastel-gray-bg: #1e1e1e;
+  --pastel-gray-text: #a3a29e;
+  --pastel-gray-dot: #555555;
+  --pastel-gray-line: #2a2a2a;
+  
+  --pastel-brown-bg: #2d2421;
+  --pastel-brown-text: #d8bcae;
+  --pastel-brown-dot: #976D57;
+  --pastel-brown-line: #423530;
+  
+  --pastel-orange-bg: #35261b;
+  --pastel-orange-text: #f0b884;
+  --pastel-orange-dot: #CC772F;
+  --pastel-orange-line: #4f3928;
+  
+  --pastel-yellow-bg: #352f1e;
+  --pastel-yellow-text: #e8c88b;
+  --pastel-yellow-dot: #C29243;
+  --pastel-yellow-line: #4e442c;
+  
+  --pastel-green-bg: #1d2b22;
+  --pastel-green-text: #a2c4ae;
+  --pastel-green-dot: #548064;
+  --pastel-green-line: #293e31;
+  
+  --pastel-blue-bg: #182834;
+  --pastel-blue-text: #91c3e2;
+  --pastel-blue-dot: #337EA9;
+  --pastel-blue-line: #233b4d;
+  
+  --pastel-purple-bg: #27202f;
+  --pastel-purple-text: #c5aade;
+  --pastel-purple-dot: #9065B0;
+  --pastel-purple-line: #3b3047;
+  
+  --pastel-pink-bg: #2f1d26;
+  --pastel-pink-text: #eaa6c7;
+  --pastel-pink-dot: #C14C8A;
+  --pastel-pink-line: #462c39;
+  
+  --pastel-red-bg: #341e1e;
+  --pastel-red-text: #f09a96;
+  --pastel-red-dot: #D44C47;
+  --pastel-red-line: #4e2b2b;
+  
+  /* Heatmap */
+  --heat-0: #1a1a1a;
+  --heat-1: #3b351e;
+  --heat-2: #5c4f24;
+  --heat-3: #7d692a;
+  --heat-4: #a08430;
+}
 
 body {
   font-family: "Pretendard Variable", -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+/* Base style overrides for dark mode elements */
+.dark .bg-white {
+  background-color: var(--bg-secondary) !important;
+}
+
+.dark input, .dark select {
+  background-color: var(--bg-input) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+/* Premium transition effect */
+body, header, section, .sheet, .cell, input, select, button {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
 }
