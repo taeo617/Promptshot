@@ -154,10 +154,6 @@ function genDash(year, month, roomFilter, reservations) {
   const totalHours = Math.round(big + small);
   const mostUsed = big > small ? "큰 회의실" : small > big ? "작은 회의실" : "-";
   const leastUsed = big > small ? "작은 회의실" : small > big ? "큰 회의실" : "-";
-  const noShowRate = 0;
-  const savedByEnd = 0;
-  const savedByNoShow = 0;
-  
   return { 
     days, 
     daily, 
@@ -166,10 +162,7 @@ function genDash(year, month, roomFilter, reservations) {
     mostUsed, 
     leastUsed, 
     mostHours: Math.round(big), 
-    leastHours: Math.round(small), 
-    noShowRate, 
-    savedByEnd, 
-    savedByNoShow 
+    leastHours: Math.round(small)
   };
 }
 const HEAT = ["var(--heat-0)", "var(--heat-1)", "var(--heat-2)", "var(--heat-3)", "var(--heat-4)"];
@@ -222,11 +215,6 @@ function Dashboard({ month, setMonth, roomF, setRoomF, now, reservations }) {
         <StatCard label="총 회의실 사용 시간" value={`${data.totalHours}시간`} delay={40} />
         <StatCard label="가장 많이 사용된 회의실" sub={`${data.mostHours}시간`} value={data.mostUsed} delay={80} />
         <StatCard label="가장 적게 사용된 회의실" sub={`${data.leastHours}시간`} value={data.leastUsed} delay={120} />
-      </div>
-      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <StatCard label="노쇼 비율" value={`${data.noShowRate}%`} delay={160} />
-        <StatCard label="종료로 절약된 시간" value={`${data.savedByEnd}시간`} delay={200} />
-        <StatCard label="노쇼로 절약된 시간" value={`${data.savedByNoShow}시간`} delay={240} />
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -308,7 +296,17 @@ export default function App() {
   const [view, setView] = useState("calendar");
   const [anchor, setAnchor] = useState(() => dayOnly(new Date()));
   const [roomId, setRoomId] = useState("big");
-  const [reservations, setReservations] = useState([]);
+  const [reservations, setReservations] = useState(() => {
+    try {
+      const saved = localStorage.getItem("reservations");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  useEffect(() => {
+    localStorage.setItem("reservations", JSON.stringify(reservations));
+  }, [reservations]);
   const [form, setForm] = useState(null);
   const [errs, setErrs] = useState({});
   const [detail, setDetail] = useState(null);
